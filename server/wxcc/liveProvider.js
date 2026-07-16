@@ -212,7 +212,10 @@ export async function setState(session, state, { auxCodeId, reason } = {}) {
     method: 'PUT',
     body: JSON.stringify(body),
   });
-  session.agentState = state;
+  // Match the "Idle: <reason>" format the client uses for its own optimistic update --
+  // this call also runs automatically right after login (default idle reason), so the
+  // server's own agentState needs the reason suffix too, not just the bare word "Idle".
+  session.agentState = state === 'Available' ? 'Available' : `Idle: ${reason}`;
   return data;
 }
 
