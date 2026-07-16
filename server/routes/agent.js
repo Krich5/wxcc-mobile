@@ -9,13 +9,13 @@ function providerFor(session) {
 }
 
 router.post('/login', async (req, res) => {
-  const { mode = 'mock', name, dialNumber, teamId } = req.body || {};
+  const { mode = 'mock', name, dialNumber, teamId, teamName } = req.body || {};
   req.session.mode = mode;
   try {
     const provider = providerFor(req.session);
     const data =
       mode === 'live'
-        ? await provider.login(req.session, { dialNumber, teamId })
+        ? await provider.login(req.session, { dialNumber, teamId, teamName })
         : provider.login(req.session, { name });
     let notificationsError = null;
     let presenceError = null;

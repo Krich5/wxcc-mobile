@@ -58,9 +58,10 @@ function LiveAgentLoginForm() {
     setBusy(true);
     setError(null);
     try {
+      const teamName = teams?.find((t) => t.id === teamId)?.name || teamId;
       const result = await api('/api/agent/login', {
         method: 'POST',
-        body: JSON.stringify({ mode: 'live', teamId, dialNumber }),
+        body: JSON.stringify({ mode: 'live', teamId, teamName, dialNumber }),
       });
       if (result.notificationsError) {
         setNotice(

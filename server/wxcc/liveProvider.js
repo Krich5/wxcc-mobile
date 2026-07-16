@@ -165,7 +165,7 @@ export async function getDefaultIdleCode(session) {
   return codes.find((c) => c.defaultCode) || null;
 }
 
-export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION' }) {
+export async function login(session, { dialNumber, teamId, teamName, deviceType = 'EXTENSION' }) {
   // Confirmed against this org's own Postman/curl example: POST /v2/agents/login
   // (not /v1), body is exactly {dialNumber, teamId, roles, deviceType} -- no
   // isExtension field, and deviceType is "EXTENSION" rather than "BROWSER".
@@ -174,7 +174,7 @@ export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSI
     body: JSON.stringify({ dialNumber, teamId, roles: ['agent'], deviceType }),
   });
   session.agentState = 'Available';
-  session.profile = { ...(data?.agent || {}), teamId, dialNumber };
+  session.profile = { ...(data?.agent || {}), teamId, teamName, dialNumber };
   // Non-fatal: the agent is already logged in on WxCC's side even if this fails --
   // it just means status/wrap-up codes won't be available until it's resolved.
   await resolveAgentContext(session).catch(() => {});

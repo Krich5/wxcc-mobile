@@ -57,7 +57,9 @@ export function PresenceBar() {
 
   return (
     <header className="presence-bar">
-      <div className="agent-name">{session.profile?.name || session.profile?.id || 'Agent'}</div>
+      <div className="agent-name">
+        <strong>Team:</strong> {session.profile?.teamName || session.profile?.name || 'Agent'}
+      </div>
       <select
         className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
         value={selectedValue}

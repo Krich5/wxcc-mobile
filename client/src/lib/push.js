@@ -13,6 +13,12 @@ function isStandalone() {
   return navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 }
 
+export async function hasExistingSubscription() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  const reg = await navigator.serviceWorker.ready;
+  return Boolean(await reg.pushManager.getSubscription());
+}
+
 export async function enableNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     if (isIos() && !isStandalone()) {
