@@ -8,9 +8,54 @@ const STAT_CARDS = [
   { key: 'waitingNow', label: 'Waiting Now' },
   { key: 'longestWait', label: 'Longest In Queue' },
   { key: 'totalHandled', label: 'Total Handled' },
-  { key: 'connected', label: 'Connected' },
   { key: 'totalAbandoned', label: 'Total Abandoned' },
 ];
+
+// Fixed order/colors matching the state-badge classes used elsewhere in the app --
+// identity is never color-alone here: each slice also gets a legend swatch + label + count.
+const STATE_SLICES = [
+  { key: 'available', label: 'Available', color: 'var(--success)' },
+  { key: 'onCall', label: 'Connected', color: 'var(--amber)' },
+  { key: 'wrapUp', label: 'Wrap-up', color: 'var(--wrapup)' },
+  { key: 'idle', label: 'Idle', color: 'var(--danger)' },
+];
+
+function StateDonut({ stateCounts }) {
+  const idleTotal = (stateCounts.idle || 0) + (stateCounts.offline || 0);
+  const counts = { ...stateCounts, idle: idleTotal };
+  const total = STATE_SLICES.reduce((sum, s) => sum + (counts[s.key] || 0), 0);
+
+  let cursor = 0;
+  const stops = STATE_SLICES.map((s) => {
+    const value = counts[s.key] || 0;
+    const start = total ? (cursor / total) * 100 : 0;
+    cursor += value;
+    const end = total ? (cursor / total) * 100 : 0;
+    return `${s.color} ${start}% ${end}%`;
+  }).join(', ');
+
+  return (
+    <div className="state-donut-row">
+      <div
+        className="state-donut"
+        style={{ background: total ? `conic-gradient(${stops})` : 'var(--bg-elevated)' }}
+      >
+        <div className="state-donut-hole">
+          <span className="state-donut-total">{total}</span>
+          <span className="state-donut-total-label">Agents</span>
+        </div>
+      </div>
+      <ul className="state-legend">
+        {STATE_SLICES.map((s) => (
+          <li key={s.key}>
+            <span className="state-legend-swatch" style={{ background: s.color }} />
+            {s.label}: {counts[s.key] || 0}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function Dashboard() {
   const { session } = useSession();
@@ -43,7 +88,7 @@ export function Dashboard() {
   if (error) return <p className="hint">Couldn't load the dashboard: {error}</p>;
   if (!data) return <p className="hint">Loading dashboard…</p>;
 
-  const { metrics, queues, agents, stateCounts } = data;
+  const { metrics, agents, stateCounts } = data;
 
   return (
     <div className="dashboard">
@@ -56,54 +101,14 @@ export function Dashboard() {
         ))}
       </div>
 
-      {queues.length > 0 && (
-        <div className="dashboard-section">
-          <p className="dashboard-section-title">Queue Details</p>
-          <div className="dashboard-table-wrap">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Queue</th>
-                  <th>Waiting</th>
-                  <th>Avg Wait</th>
-                  <th>Longest Wait</th>
-                  <th>Handled</th>
-                  <th>Abandoned</th>
-                  <th>Connected</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queues.map((q) => (
-                  <tr key={q.id}>
-                    <td>{q.name}</td>
-                    <td>{q.waiting}</td>
-                    <td>{q.avgWait}</td>
-                    <td>{q.longestWait}</td>
-                    <td>{q.handled}</td>
-                    <td>{q.abandoned}</td>
-                    <td>{q.connected}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
       <div className="dashboard-section">
         <p className="dashboard-section-title">Agent State</p>
-        <div className="state-pill-row">
-          <span className="state-pill state-pill-available">{stateCounts.available} Available</span>
-          <span className="state-pill state-pill-connected">{stateCounts.onCall} Connected</span>
-          <span className="state-pill state-pill-wrapup">{stateCounts.wrapUp} Wrap-up</span>
-          <span className="state-pill state-pill-idle">{stateCounts.idle + stateCounts.offline} Idle</span>
-        </div>
+        <StateDonut stateCounts={stateCounts} />
         {agents.length > 0 ? (
           <div className="dashboard-table-wrap">
             <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th>Team</th>
                   <th>Agent</th>
                   <th>State</th>
                   <th>Duration</th>
@@ -115,7 +120,6 @@ export function Dashboard() {
               <tbody>
                 {agents.map((a) => (
                   <tr key={a.id}>
-                    <td>{a.team}</td>
                     <td>{a.agent}</td>
                     <td>
                       <span className={`state-badge state-badge-${a.state}`}>{a.stateLabel}</span>
