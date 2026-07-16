@@ -15,6 +15,10 @@
 html,
 body {
   height: 100%;
+  /* iOS Safari's automatic text-inflation heuristic can scale up font sizes on its
+     own after layout/content changes, independent of any pinch-zoom -- lock it. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #root {
