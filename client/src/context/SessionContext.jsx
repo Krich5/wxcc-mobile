@@ -23,6 +23,22 @@ export function SessionProvider({ children }) {
   }, [refresh]);
 
   useEffect(() => {
+    // The server session can diverge from what this tab last saw (a redeploy/restart
+    // wiped it, it expired, etc.) without any user action -- re-sync on a timer and
+    // whenever the app comes back to the foreground, so the UI never keeps showing a
+    // signed-in state the server no longer agrees with.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh().catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(() => refresh().catch(() => {}), 60000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(interval);
+    };
+  }, [refresh]);
+
+  useEffect(() => {
     const es = new EventSource('/api/agent/events');
     const onTaskUpdate = (evt) => setSession((s) => ({ ...s, currentTask: JSON.parse(evt.data) }));
     const onWrapupComplete = () => setSession((s) => ({ ...s, currentTask: null }));

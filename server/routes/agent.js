@@ -2,6 +2,7 @@ import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
 import { getDashboard } from '../wxcc/dashboard.js';
+import { clearTokenCookie } from '../session.js';
 
 const router = express.Router();
 
@@ -63,10 +64,12 @@ router.post('/logout', async (req, res) => {
   // the app would land back on the team screen instead of the actual main page.
   req.session.mode = null;
   req.session.tokens = null;
+  req.session.tokensIssuedAt = 0;
   req.session.agentContext = null;
   req.session.agentProfileData = null;
   req.session.wxccOrgId = null;
   req.session.wxccCiUserId = null;
+  clearTokenCookie(res);
   res.json({ ok: true });
 });
 

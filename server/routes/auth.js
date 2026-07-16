@@ -2,6 +2,7 @@
 // the added "cjp:user" scope for Contact Center access. Register an Integration at
 // https://developer.webex-cx.com to get a client id/secret.
 import express from 'express';
+import { persistTokens } from '../session.js';
 
 const router = express.Router();
 
@@ -48,8 +49,11 @@ router.get('/callback', async (req, res) => {
       const text = await tokenRes.text().catch(() => '');
       throw new Error(`Token exchange failed: ${tokenRes.status} ${text}`);
     }
-    req.session.tokens = await tokenRes.json();
+    const tokens = await tokenRes.json();
+    req.session.tokens = tokens;
+    req.session.tokensIssuedAt = Date.now();
     req.session.mode = 'live';
+    persistTokens(res, tokens);
     res.redirect('/?connected=1');
   } catch (err) {
     res.status(500).send(`OAuth callback failed: ${err.message}`);
