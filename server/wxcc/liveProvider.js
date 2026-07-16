@@ -67,7 +67,59 @@ export async function listTeams(session, email) {
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
-export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION' }) {
+async function resolveAgentContext(session, email) {
+  // agentId (used by the state-change PUT) and agentProfileId (used to look up idle/
+  // wrap-up codes) both come off the WxCC "user" record for the signed-in agent's
+  // email -- TODO verify the agentProfileId field name against your org's actual
+  // /v2/user response shape.
+  if (session.agentContext) return session.agentContext;
+  if (!email) throw new Error('Missing your email -- sign in again and enter it on the team screen');
+  const user = await findUserByEmail(session, email);
+  if (!user?.id) throw new Error(`No WxCC user found for ${email}`);
+  session.agentContext = { agentId: user.id, agentProfileId: user.agentProfileId };
+  return session.agentContext;
+}
+
+async function loadAgentProfile(session) {
+  if (session.agentProfileData) return session.agentProfileData;
+  const ctx = session.agentContext;
+  if (!ctx?.agentProfileId) {
+    throw new Error('Agent profile not resolved yet -- sign in with your email on the team screen');
+  }
+  // Confirmed against this org's own curl example: GET
+  // /organization/{orgid}/agent-profile/{agentProfileId} -> { idleCodes: [ids],
+  // wrapUpCodes: [ids], ... }.
+  session.agentProfileData = await authedFetch(
+    session,
+    `/organization/${orgId()}/agent-profile/${ctx.agentProfileId}`
+  );
+  return session.agentProfileData;
+}
+
+async function resolveCodeNames(session, ids, resource) {
+  if (!ids?.length) return [];
+  // TODO verify this list endpoint/filter shape against your org's Postman collection --
+  // the agent-profile only gives us code IDs, not display names.
+  const data = await authedFetch(
+    session,
+    `/organization/${orgId()}/v2/${resource}?filter=${encodeURIComponent(
+      `id=in=(${ids.map((id) => `"${id}"`).join(',')})`
+    )}`
+  );
+  return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id }));
+}
+
+export async function getIdleCodes(session) {
+  const profile = await loadAgentProfile(session);
+  return resolveCodeNames(session, profile?.idleCodes, 'idle-code');
+}
+
+export async function getWrapUpCodes(session) {
+  const profile = await loadAgentProfile(session);
+  return resolveCodeNames(session, profile?.wrapUpCodes, 'wrap-up-code');
+}
+
+export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION', email }) {
   // Confirmed against this org's own Postman/curl example: POST /v2/agents/login
   // (not /v1), body is exactly {dialNumber, teamId, roles, deviceType} -- no
   // isExtension field, and deviceType is "EXTENSION" rather than "BROWSER".
@@ -77,6 +129,11 @@ export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSI
   });
   session.agentState = 'Available';
   session.profile = { ...(data?.agent || {}), teamId, dialNumber };
+  if (email) {
+    // Non-fatal: the agent is already logged in on WxCC's side even if this fails --
+    // it just means status/wrap-up codes won't be available until it's resolved.
+    await resolveAgentContext(session, email).catch(() => {});
+  }
   return data;
 }
 
@@ -97,12 +154,22 @@ export async function logout(session, { reasonCode = 'AgentLogout' } = {}) {
   return data;
 }
 
-export async function setState(session, state, auxCodeId) {
-  // TODO verify path/body -- bumped to /v2 to match the confirmed login endpoint, but
-  // this specific path/body shape is still unverified.
-  const data = await authedFetch(session, '/v2/agents/state', {
-    method: 'POST',
-    body: JSON.stringify({ state, auxCodeId }),
+export async function setState(session, state, { auxCodeId, reason } = {}) {
+  // Confirmed against this org's own curl example: PUT /v2/agents/session/state with
+  // {channelType, state, agentId, auxCodeId, reason} -- auxCodeId/reason are only sent
+  // for non-Available states.
+  const ctx = session.agentContext;
+  if (!ctx?.agentId) {
+    throw new Error('Agent context not resolved yet -- sign in with your email on the team screen');
+  }
+  const body = { channelType: ['telephony'], state, agentId: ctx.agentId };
+  if (state !== 'Available') {
+    body.auxCodeId = auxCodeId;
+    body.reason = reason;
+  }
+  const data = await authedFetch(session, '/v2/agents/session/state', {
+    method: 'PUT',
+    body: JSON.stringify(body),
   });
   session.agentState = state;
   return data;

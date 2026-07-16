@@ -9,13 +9,13 @@ function providerFor(session) {
 }
 
 router.post('/login', async (req, res) => {
-  const { mode = 'mock', name, dialNumber, teamId } = req.body || {};
+  const { mode = 'mock', name, dialNumber, teamId, email } = req.body || {};
   req.session.mode = mode;
   try {
     const provider = providerFor(req.session);
     const data =
       mode === 'live'
-        ? await provider.login(req.session, { dialNumber, teamId })
+        ? await provider.login(req.session, { dialNumber, teamId, email })
         : provider.login(req.session, { name });
     let notificationsError = null;
     if (mode === 'live') {
@@ -49,9 +49,9 @@ router.post('/logout', async (req, res) => {
 });
 
 router.post('/state', async (req, res) => {
-  const { state } = req.body || {};
+  const { state, auxCodeId, reason } = req.body || {};
   try {
-    const data = await providerFor(req.session).setState(req.session, state);
+    const data = await providerFor(req.session).setState(req.session, state, { auxCodeId, reason });
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
@@ -74,6 +74,26 @@ router.get('/teams', async (req, res) => {
   try {
     const teams = await live.listTeams(req.session, req.query.email);
     res.json({ ok: true, teams });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/idle-codes', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, codes: [] });
+  try {
+    const codes = await live.getIdleCodes(req.session);
+    res.json({ ok: true, codes });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/wrapup-codes', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, codes: [] });
+  try {
+    const codes = await live.getWrapUpCodes(req.session);
+    res.json({ ok: true, codes });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

@@ -75,7 +75,7 @@ function LiveAgentLoginForm() {
     try {
       const result = await api('/api/agent/login', {
         method: 'POST',
-        body: JSON.stringify({ mode: 'live', teamId, dialNumber }),
+        body: JSON.stringify({ mode: 'live', teamId, dialNumber, email }),
       });
       if (result.notificationsError) {
         setNotice(
@@ -103,13 +103,14 @@ function LiveAgentLoginForm() {
       </p>
 
       <label className="field">
-        Your Webex email (optional, narrows the team list to yours)
+        Your Webex email (needed for status/wrap-up codes, and narrows the team list to yours)
         <div className="inline-field">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@company.com"
+            required
           />
           <button type="button" className="secondary" onClick={findMyTeams}>
             Find my teams
