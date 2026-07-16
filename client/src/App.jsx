@@ -5,7 +5,6 @@ import { PresenceBar } from './components/PresenceBar.jsx';
 import { IncomingTaskModal } from './components/IncomingTaskModal.jsx';
 import { CallScreen } from './components/CallScreen.jsx';
 import { WrapUpModal } from './components/WrapUpModal.jsx';
-import { api } from './lib/api.js';
 import { enableNotifications } from './lib/push.js';
 
 export default function App() {
@@ -16,14 +15,6 @@ export default function App() {
   if (!session.profile) return <LoginScreen />;
 
   const task = session.currentTask;
-
-  const simulateCall = async () => {
-    try {
-      await api('/api/agent/simulate-task', { method: 'POST' });
-    } catch (err) {
-      setNotice(err.message);
-    }
-  };
 
   const requestNotifications = async () => {
     try {
@@ -41,11 +32,6 @@ export default function App() {
         {!task && (
           <div className="idle-panel">
             <p>Waiting for a task…</p>
-            {session.mode === 'mock' && (
-              <button className="primary" onClick={simulateCall}>
-                Simulate incoming call
-              </button>
-            )}
             <button className="secondary" onClick={requestNotifications}>
               Enable notifications
             </button>
