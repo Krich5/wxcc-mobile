@@ -224,6 +224,14 @@ export async function subscribeNotifications(session) {
     throw new Error('Notification subscribe response did not include a websocketUrl');
   }
   const ws = new WebSocket(sub.websocketUrl);
+  // We told the subscribe call keepAliveInterval: 30, which means WE'RE responsible for
+  // keeping the socket alive, not just the server. Sending a raw WS ping frame every
+  // 15s (well under 30s) is the protocol-correct default; if Cisco's gateway expects an
+  // application-level heartbeat message instead of a transport ping, this will need
+  // adjusting once we can see the socket actually drop.
+  const keepAlive = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) ws.ping();
+  }, 15000);
   ws.on('message', (raw) => {
     let msg;
     try {
@@ -238,5 +246,10 @@ export async function subscribeNotifications(session) {
     }
   });
   ws.on('error', (err) => session.emitter.emit('notification-error', err.message));
+  ws.on('close', () => {
+    clearInterval(keepAlive);
+    if (session.liveSocket === ws) session.liveSocket = null;
+    session.emitter.emit('notification-closed');
+  });
   session.liveSocket = ws;
 }
