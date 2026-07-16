@@ -1,12 +1,13 @@
 // Hand-written service worker (no build step, no workbox) — kept intentionally simple
 // for a POC: a basic offline app-shell cache plus push notification handling.
-const CACHE_NAME = 'wxcc-agent-shell-v1';
-const SHELL_ASSETS = ['/', '/index.html', '/manifest.webmanifest'];
+//
+// Navigations and the manifest go network-first: an agent app must never get stuck
+// showing yesterday's build just because it's cache-first. Hashed static assets
+// (/assets/*, /icons/*) are safe to cache-first since their filename changes on
+// every change.
+const CACHE_NAME = 'wxcc-agent-shell-v2';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)));
-  self.skipWaiting();
-});
+self.addEventListener('install', () => self.skipWaiting());
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -18,9 +19,26 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || new URL(event.request.url).pathname.startsWith('/api/')) {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.pathname.startsWith('/api/')) {
     return;
   }
+
+  const isNavigation = event.request.mode === 'navigate' || url.pathname === '/manifest.webmanifest';
+
+  if (isNavigation) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(
       (cached) =>
