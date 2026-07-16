@@ -17,12 +17,12 @@ router.get('/login', (req, res) => {
     client_id: process.env.WEBEX_CLIENT_ID,
     redirect_uri: process.env.WEBEX_REDIRECT_URI,
     // cjp:user is the WxCC agent-runtime scope; cjp:config_read is required separately
-    // for org config lookups like List Teams. This Integration has no spark:* scopes at
-    // all, so we don't request one -- listTeams() takes the org ID from config (WXCC_ORG_ID)
-    // instead of resolving it via the generic Webex people/me endpoint. Both scopes below
-    // must be enabled on the Integration at developer.webex-cx.com or Webex will reject the
-    // authorize request with invalid_scope.
-    scope: 'cjp:user cjp:config_read',
+    // for org config lookups like List Teams. spark:people_read was just added to this
+    // Integration specifically so resolveAgentContext() can call the generic Webex
+    // people/me endpoint to identify the signed-in agent without asking for their email.
+    // All three scopes must be enabled on the Integration at developer.webex-cx.com or
+    // Webex will reject the authorize request with invalid_scope.
+    scope: 'cjp:user cjp:config_read spark:people_read',
     state: req.session.id,
   });
   res.redirect(`${AUTHORIZE_URL}?${params}`);
