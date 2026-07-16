@@ -54,10 +54,19 @@ router.post('/login', async (req, res) => {
 router.post('/logout', async (req, res) => {
   try {
     await providerFor(req.session).logout(req.session);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
+  } catch {
+    // Non-fatal: sign-out should always land back on the main page, even if the real
+    // WxCC logout call fails (e.g. the agent never actually finished logging in yet).
   }
+  // Fully reset -- otherwise mode/tokens/cached identity would survive a reload and
+  // the app would land back on the team screen instead of the actual main page.
+  req.session.mode = null;
+  req.session.tokens = null;
+  req.session.agentContext = null;
+  req.session.agentProfileData = null;
+  req.session.wxccOrgId = null;
+  req.session.wxccCiUserId = null;
+  res.json({ ok: true });
 });
 
 router.post('/state', async (req, res) => {

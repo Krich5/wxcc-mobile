@@ -78,7 +78,7 @@ function LiveAgentLoginForm() {
     }
   };
 
-  const startOver = async () => {
+  const signOut = async () => {
     await api('/api/agent/logout', { method: 'POST' }).catch(() => {});
     window.location.reload();
   };
@@ -86,9 +86,7 @@ function LiveAgentLoginForm() {
   return (
     <form className="screen login-screen" onSubmit={submit}>
       <h1>Connected to Webex</h1>
-      <p className="subtitle">
-        Choose your team and enter a dial number to complete agent login against the real WxCC API.
-      </p>
+      <p className="subtitle">Choose your team and enter your cell phone number</p>
 
       <label className="field">
         Team
@@ -124,7 +122,7 @@ function LiveAgentLoginForm() {
       </label>
 
       <button className="primary" type="submit" disabled={busy}>
-        {busy ? 'Signing in…' : 'Sign in as agent'}
+        {busy ? 'Signing in…' : 'Login'}
       </button>
       {error && (
         <p className="error">
@@ -133,8 +131,8 @@ function LiveAgentLoginForm() {
         </p>
       )}
 
-      <button className="secondary" type="button" onClick={startOver}>
-        Start over
+      <button className="secondary" type="button" onClick={signOut}>
+        Sign out
       </button>
     </form>
   );
