@@ -162,11 +162,6 @@ button.primary:disabled {
   flex: 1;
 }
 
-.state-pills {
-  display: flex;
-  gap: 8px;
-}
-
 .pill {
   padding: 8px 14px;
   border-radius: 999px;
@@ -186,26 +181,20 @@ button.primary:disabled {
   opacity: 0.4;
 }
 
-.pill-success {
+.state-select {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--bg-elevated);
+  border: 1px solid var(--success);
   color: var(--success);
-  border-color: var(--success);
+  max-width: 160px;
 }
 
-.pill-success.active {
-  background: var(--success);
-  color: white;
-  border-color: var(--success);
-}
-
-.pill-danger {
+.state-select.is-idle {
+  border-color: var(--danger);
   color: var(--danger);
-  border-color: var(--danger);
-}
-
-.pill-danger.active {
-  background: var(--danger);
-  color: white;
-  border-color: var(--danger);
 }
 
 button.link {

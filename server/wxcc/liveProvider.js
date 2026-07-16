@@ -244,8 +244,13 @@ export async function subscribeNotifications(session) {
     try {
       msg = JSON.parse(raw.toString());
     } catch {
+      // Temporary: log every raw frame (even non-JSON) so we can see the real message
+      // shape from a live call and fix the guessed AgentContactEvent/ContactOffered
+      // matching below -- remove once that's confirmed.
+      console.log('[wxcc notification] non-JSON frame:', raw.toString());
       return;
     }
+    console.log('[wxcc notification]', JSON.stringify(msg));
     session.emitter.emit('raw-notification', msg);
     if (msg?.type === 'AgentContactEvent' && msg?.eventType === 'ContactOffered') {
       session.currentTask = msg.data;
