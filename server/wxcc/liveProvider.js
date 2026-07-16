@@ -88,6 +88,8 @@ export async function logout(session, { reasonCode = 'AgentLogout' } = {}) {
     body: JSON.stringify({ logoutReason: reasonCode }),
   });
   session.agentState = 'Offline';
+  session.profile = null;
+  session.currentTask = null;
   if (session.liveSocket) {
     session.liveSocket.close();
     session.liveSocket = null;
