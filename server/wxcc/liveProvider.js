@@ -31,32 +31,16 @@ async function authedFetch(session, path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
-async function webexIdentity(session) {
-  if (session.webexIdentity) return session.webexIdentity;
-  // Standard Webex Identity API (same OAuth token, not WxCC-specific) -- used just to
-  // learn the signed-in user's orgId/personId so we can look up their WxCC teams.
-  const res = await fetch('https://webexapis.com/v1/people/me', {
-    headers: { Authorization: `Bearer ${session.tokens?.access_token}` },
-  });
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`Webex people/me failed: ${res.status} ${body}`);
-  }
-  const me = await res.json();
-  session.webexIdentity = { userId: me.id, orgId: me.orgId };
-  return session.webexIdentity;
-}
-
 export async function listTeams(session) {
   // Confirmed against developer.webex.com/webex-contact-center/docs/api/v1/team/list-teams
-  // (GET /organization/{orgid}/v2/team, RSQL `filter` query param, userId is filterable).
-  // Requires the org-config scope (cjp:config or cjp:config_read) on the Integration in
-  // addition to cjp:user -- if this 401s, that's the first thing to check.
-  const { userId, orgId } = await webexIdentity(session);
-  const data = await authedFetch(
-    session,
-    `/organization/${orgId}/v2/team?filter=${encodeURIComponent(`userId==${userId}`)}`
-  );
+  // (GET /organization/{orgid}/v2/team). Some WxCC-only Integrations (created with just
+  // cjp:*/cjds:*/analytics:* scopes, no spark:*) can't call the generic Webex people/me
+  // endpoint to resolve orgId, so this takes the org ID from config instead of trying to
+  // filter by the signed-in user -- it lists every team in the org rather than just the
+  // agent's own teams.
+  const orgId = process.env.WXCC_ORG_ID;
+  if (!orgId) throw new Error('WXCC_ORG_ID is not configured');
+  const data = await authedFetch(session, `/organization/${orgId}/v2/team`);
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
