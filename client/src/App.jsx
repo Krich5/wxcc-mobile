@@ -6,6 +6,7 @@ import { IncomingTaskModal } from './components/IncomingTaskModal.jsx';
 import { CallScreen } from './components/CallScreen.jsx';
 import { WrapUpModal } from './components/WrapUpModal.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
+import { ActiveCall } from './components/ActiveCall.jsx';
 import { enableNotifications, hasExistingSubscription } from './lib/push.js';
 
 export default function App() {
@@ -37,6 +38,7 @@ export default function App() {
     <div className="app">
       <PresenceBar />
       <main className="console">
+        <ActiveCall />
         {!task && (
           <>
             <Dashboard />

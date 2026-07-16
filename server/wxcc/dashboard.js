@@ -107,6 +107,57 @@ function buildSessionQuery(fromMs, toMs) {
 }`;
 }
 
+function buildActiveCallQuery(fromMs, toMs, ownerId, cursor = '0') {
+  // Confirmed against this org's own curl example: taskDetails (a different top-level
+  // GraphQL field than task/agentSession above) filtered by owner.id -- this is the
+  // richest per-call record available (origin/destination, durations, customer info),
+  // used here just to answer "is this agent on a call right now, and with whom."
+  return `{
+  taskDetails(
+    from: ${Math.floor(fromMs)}
+    to: ${Math.floor(toMs)}
+    filter: { and: [
+      { owner: { id: { equals: "${ownerId}" } } }
+      { isActive: { equals: true } }
+    ] }
+    pagination: { cursor: "${cursor}" }
+  ) {
+    tasks {
+      id status isActive origin destination createdTime channelType direction
+      owner { id name }
+      lastTeam { id name }
+      lastEntryPoint { id name }
+      customer { name phoneNumber email }
+    }
+    pageInfo { hasNextPage endCursor }
+  }
+}`;
+}
+
+export async function getActiveCall(session) {
+  const ctx = await resolveAgentContext(session);
+  const now = Date.now();
+  // Look back a few hours, not just "today" -- an active call could have started
+  // just before midnight and still be running.
+  const fromMs = now - 4 * 60 * 60 * 1000;
+  const data = await runGraphQL(session, buildActiveCallQuery(fromMs, now, ctx.agentId));
+  const tasks = data?.taskDetails?.tasks || [];
+  const active = tasks.find((t) => t.isActive) || null;
+  if (!active) return null;
+  return {
+    id: active.id,
+    status: active.status,
+    direction: active.direction,
+    origin: active.origin,
+    destination: active.destination,
+    createdTimeMs: active.createdTime,
+    team: active.lastTeam?.name || null,
+    entryPoint: active.lastEntryPoint?.name || null,
+    customerName: active.customer?.name || null,
+    customerPhone: active.customer?.phoneNumber || active.origin || null,
+  };
+}
+
 async function fetchAllTaskPages(session, buildQuery, fromMs, toMs) {
   const allTasks = [];
   const seenTaskIds = new Set();

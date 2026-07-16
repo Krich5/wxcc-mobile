@@ -1,7 +1,7 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
-import { getDashboard } from '../wxcc/dashboard.js';
+import { getDashboard, getActiveCall } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 
 const router = express.Router();
@@ -78,6 +78,16 @@ router.post('/state', async (req, res) => {
   try {
     const data = await providerFor(req.session).setState(req.session, state, { auxCodeId, reason });
     res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/active-call', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, call: null });
+  try {
+    const call = await getActiveCall(req.session);
+    res.json({ ok: true, call });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

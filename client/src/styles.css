@@ -324,6 +324,37 @@ button.primary:disabled {
   color: var(--danger);
 }
 
+.active-call-card {
+  margin: 16px 16px 0;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--success);
+  border-radius: 14px;
+  text-align: left;
+}
+
+.active-call-label {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--success);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.active-call-number {
+  margin: 0 0 4px;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.active-call-meta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+
 .dashboard {
   width: 100%;
   padding: 16px;
