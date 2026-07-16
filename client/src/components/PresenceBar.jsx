@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
+import { CallLogModal } from './CallLogModal.jsx';
 
 const DASHBOARD_POLL_MS = 15000;
 
@@ -17,6 +18,7 @@ export function PresenceBar() {
   const [idleCodes, setIdleCodes] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [callLogOpen, setCallLogOpen] = useState(false);
   // The state-change reason (e.g. "Login") only tells us WHAT state we're in; the
   // duration comes from the same WxCC agentSession record the dashboard already reads
   // (real, server-tracked elapsed time -- not a client timer that resets on reload),
@@ -39,6 +41,18 @@ export function PresenceBar() {
         .then(({ self }) => {
           if (cancelled || !self) return;
           setSelfBase({ baseSec: self.durationSec, fetchedAtMs: Date.now() });
+          // Same source of truth as the dashboard's agent list -- reconcile our
+          // optimistic client-side agentState with what WxCC actually reports every
+          // poll, so the two can never drift apart for long. Only Available/Idle are
+          // reconciled here; on-call/ringing/wrap-up are transient call states that
+          // don't correspond to a presence-dropdown option.
+          if (self.state === 'available') {
+            setSession((s) => (s.agentState === 'Available' ? s : { ...s, agentState: 'Available' }));
+          } else if (self.state === 'idle') {
+            const label = self.idleCode && self.idleCode !== '—' ? self.idleCode : self.stateLabel;
+            const next = `Idle: ${label}`;
+            setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
+          }
         })
         .catch(() => {});
     };
@@ -148,12 +162,17 @@ export function PresenceBar() {
                 <span className="side-panel-value">{session.profile?.dialNumber || '—'}</span>
               </div>
             </div>
+            <button className="secondary" onClick={() => setCallLogOpen(true)}>
+              Call Log
+            </button>
             <button className="secondary" onClick={() => setConfirmSignOut(true)}>
               Sign Out
             </button>
           </div>
         </div>
       )}
+
+      {callLogOpen && <CallLogModal onClose={() => setCallLogOpen(false)} />}
 
       {confirmSignOut && (
         <div className="overlay" onClick={() => setConfirmSignOut(false)}>

@@ -1,7 +1,7 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
-import { getDashboard, getActiveCall } from '../wxcc/dashboard.js';
+import { getDashboard, getActiveCall, getCallHistory } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 
 const router = express.Router();
@@ -93,6 +93,16 @@ router.get('/active-call', async (req, res) => {
   }
 });
 
+router.get('/call-log', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, calls: [] });
+  try {
+    const calls = await getCallHistory(req.session);
+    res.json({ ok: true, calls });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/me', (req, res) => {
   res.json({
     mode: req.session.mode,
@@ -136,10 +146,13 @@ router.get('/idle-codes', async (req, res) => {
 });
 
 router.get('/wrapup-codes', async (req, res) => {
-  if (req.session.mode !== 'live') return res.json({ ok: true, codes: [] });
+  if (req.session.mode !== 'live') return res.json({ ok: true, codes: [], autoWrapAfterMs: 0 });
   try {
-    const codes = await live.getWrapUpCodes(req.session);
-    res.json({ ok: true, codes });
+    const [codes, { autoWrapAfterMs }] = await Promise.all([
+      live.getWrapUpCodes(req.session),
+      live.getWrapUpSettings(req.session),
+    ]);
+    res.json({ ok: true, codes, autoWrapAfterMs });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }
@@ -173,9 +186,9 @@ router.post('/tasks/:id/end', async (req, res) => {
 });
 
 router.post('/tasks/:id/wrapup', async (req, res) => {
-  const { code } = req.body || {};
+  const { auxCodeId, wrapUpReason } = req.body || {};
   try {
-    const data = await providerFor(req.session).wrapupTask(req.session, req.params.id, code);
+    const data = await providerFor(req.session).wrapupTask(req.session, req.params.id, { auxCodeId, wrapUpReason });
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });

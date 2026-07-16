@@ -684,6 +684,72 @@ button.link {
   margin: 16px 0 24px;
 }
 
+.card.call-log {
+  max-width: 380px;
+  text-align: left;
+  max-height: 80vh;
+  max-height: 80dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.card.call-log h2 {
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+.call-log-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.call-log-row {
+  background: var(--bg);
+  border: 1px solid #263457;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.call-log-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.call-log-caller {
+  font-weight: 600;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.call-log-when {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.call-log-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+
+.call-log-row-code {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  color: var(--wrapup);
+}
+
 .toast {
   position: fixed;
   left: 16px;

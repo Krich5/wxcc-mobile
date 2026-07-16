@@ -134,6 +134,82 @@ function buildActiveCallQuery(fromMs, toMs, ownerId, cursor = '0') {
 }`;
 }
 
+function buildCallHistoryQuery(fromMs, toMs, ownerId, cursor = '0') {
+  // Same taskDetails resource as the active-call query, just isActive:false (ended
+  // calls) instead of true -- gives us the per-call duration breakdown (talk/hold/
+  // consult/conference/wrap-up) for the Call Log.
+  return `{
+  taskDetails(
+    from: ${Math.floor(fromMs)}
+    to: ${Math.floor(toMs)}
+    filter: { and: [
+      { owner: { id: { equals: "${ownerId}" } } }
+      { isActive: { equals: false } }
+    ] }
+    pagination: { cursor: "${cursor}" }
+  ) {
+    tasks {
+      id status direction origin destination createdTime endedTime
+      totalDuration connectedDuration holdDuration consultDuration conferenceDuration
+      wrapupDuration lastWrapupCodeName terminationType
+      lastTeam { id name }
+      customer { name phoneNumber email }
+    }
+    pageInfo { hasNextPage endCursor }
+  }
+}`;
+}
+
+const CALL_HISTORY_MAX_PAGES = 10;
+const CALL_HISTORY_LIMIT = 25;
+const CALL_HISTORY_LOOKBACK_DAYS = 7;
+
+export async function getCallHistory(session, { limit = CALL_HISTORY_LIMIT } = {}) {
+  const ctx = await resolveAgentContext(session);
+  const now = Date.now();
+  const fromMs = now - CALL_HISTORY_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  const allTasks = [];
+  const seenIds = new Set();
+  const seenCursors = new Set();
+  let cursor = '0';
+  for (let page = 0; page < CALL_HISTORY_MAX_PAGES; page += 1) {
+    const data = await runGraphQL(session, buildCallHistoryQuery(fromMs, now, ctx.agentId, cursor));
+    const node = data?.taskDetails;
+    const tasks = Array.isArray(node?.tasks) ? node.tasks : [];
+    tasks.forEach((t) => {
+      const id = String(t?.id || '');
+      if (id && seenIds.has(id)) return;
+      if (id) seenIds.add(id);
+      allTasks.push(t);
+    });
+    const nextCursor = node?.pageInfo?.endCursor;
+    if (!node?.pageInfo?.hasNextPage || !nextCursor || seenCursors.has(nextCursor)) break;
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+  allTasks.sort((a, b) => (b?.createdTime || 0) - (a?.createdTime || 0));
+  return allTasks.slice(0, limit).map((t) => ({
+    id: t.id,
+    direction: t.direction,
+    caller: t.customer?.name || t.customer?.phoneNumber || t.origin || 'Unknown',
+    phone: t.customer?.phoneNumber || t.origin || null,
+    team: t.lastTeam?.name || null,
+    createdTimeMs: t.createdTime,
+    endedTimeMs: t.endedTime,
+    // connectedDuration is the actual talk time -- total/hold/consult/conference/wrapup
+    // are all in the same (millisecond) units, converted via the same toSeconds() the
+    // rest of this file already uses for these GraphQL duration fields.
+    talkSec: toSeconds(Number(t.connectedDuration)),
+    holdSec: toSeconds(Number(t.holdDuration)),
+    consultSec: toSeconds(Number(t.consultDuration)),
+    conferenceSec: toSeconds(Number(t.conferenceDuration)),
+    wrapupSec: toSeconds(Number(t.wrapupDuration)),
+    totalSec: toSeconds(Number(t.totalDuration)),
+    wrapUpCode: t.lastWrapupCodeName || null,
+    terminationType: t.terminationType || null,
+  }));
+}
+
 export async function getActiveCall(session) {
   const ctx = await resolveAgentContext(session);
   const now = Date.now();
@@ -448,7 +524,12 @@ export async function getDashboard(session) {
 
   const selfRow = agentRows.find((r) => r.id === ctx.agentId);
   const self = selfRow
-    ? { state: selfRow.state, stateLabel: selfRow.stateLabel, durationSec: selfRow.durationSec }
+    ? {
+        state: selfRow.state,
+        stateLabel: selfRow.stateLabel,
+        durationSec: selfRow.durationSec,
+        idleCode: selfRow.idleCode,
+      }
     : null;
 
   return {

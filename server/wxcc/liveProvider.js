@@ -176,6 +176,21 @@ export async function getDefaultIdleCode(session) {
   return codes.find((c) => c.defaultCode) || null;
 }
 
+export async function getDefaultWrapUpCode(session) {
+  // Same defaultCode flag as idle codes, just scoped to the wrap-up-code list -- used to
+  // auto-submit a wrap-up when the agent doesn't pick one within autoWrapAfterSeconds.
+  const codes = await getWrapUpCodes(session);
+  return codes.find((c) => c.defaultCode) || null;
+}
+
+export async function getWrapUpSettings(session) {
+  const profile = await loadAgentProfile(session);
+  // Confirmed: agent-profile.autoWrapAfterSeconds is actually in MILLISECONDS despite
+  // its name -- use it directly as a setTimeout duration. 0/missing means auto-wrap-up
+  // isn't configured for this profile.
+  return { autoWrapAfterMs: Number(profile?.autoWrapAfterSeconds) || 0 };
+}
+
 export async function login(session, { dialNumber, teamId, teamName, deviceType = 'EXTENSION' }) {
   // Confirmed against this org's own Postman/curl example: POST /v2/agents/login
   // (not /v1), body is exactly {dialNumber, teamId, roles, deviceType} -- no
@@ -244,11 +259,13 @@ export async function endTask(session, taskId) {
   return data;
 }
 
-export async function wrapupTask(session, taskId, code) {
-  // TODO verify wrap-up-code submission endpoint/field names.
-  const data = await authedFetch(session, `/v2/agents/contact/${taskId}/wrapup`, {
+export async function wrapupTask(session, taskId, { auxCodeId, wrapUpReason } = {}) {
+  // Confirmed against this org's own curl example: POST /v1/tasks/{taskId}/wrapup with
+  // {auxCodeId, wrapUpReason} -- not the /v2/agents/contact/... path or wrapUpCode field
+  // this was originally guessed as.
+  const data = await authedFetch(session, `/v1/tasks/${taskId}/wrapup`, {
     method: 'POST',
-    body: JSON.stringify({ wrapUpCode: code }),
+    body: JSON.stringify({ auxCodeId, wrapUpReason }),
   });
   session.currentTask = null;
   return data;

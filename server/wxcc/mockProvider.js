@@ -53,9 +53,9 @@ export function endTask(session, taskId) {
   return task;
 }
 
-export function wrapupTask(session, taskId, code) {
+export function wrapupTask(session, taskId, { auxCodeId, wrapUpReason } = {}) {
   session.currentTask = null;
-  const result = { taskId, code };
+  const result = { taskId, auxCodeId, wrapUpReason };
   session.emitter.emit('task:wrapup-complete', result);
   return result;
 }

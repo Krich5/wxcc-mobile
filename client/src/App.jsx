@@ -8,10 +8,12 @@ import { WrapUpModal } from './components/WrapUpModal.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { ActiveCall } from './components/ActiveCall.jsx';
 import { enableNotifications, hasExistingSubscription } from './lib/push.js';
+import { useActiveCall } from './hooks/useActiveCall.js';
 
 export default function App() {
   const { session, loading, notice, setNotice } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const { call, endedTaskId, clearEnded } = useActiveCall(session.mode);
 
   useEffect(() => {
     hasExistingSubscription()
@@ -38,7 +40,7 @@ export default function App() {
     <div className="app">
       <PresenceBar />
       <main className="console">
-        <ActiveCall />
+        <ActiveCall call={call} />
         {!task && (
           <>
             <Dashboard />
@@ -55,6 +57,11 @@ export default function App() {
         {task?.status === 'wrapup' && <WrapUpModal task={task} />}
       </main>
       {task?.status === 'offered' && <IncomingTaskModal task={task} />}
+      {/* Detected via active-call polling (the call we were tracking is no longer
+          active) rather than the websocket task flow above, which never fires. */}
+      {endedTaskId && task?.status !== 'wrapup' && (
+        <WrapUpModal task={{ id: endedTaskId }} onDone={clearEnded} />
+      )}
       {notice && (
         <div className="toast" onClick={() => setNotice(null)}>
           {notice}
