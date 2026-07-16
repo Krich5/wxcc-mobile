@@ -22,11 +22,11 @@ function ModeChoice() {
 
   return (
     <div className="screen login-screen">
-      <h1>WxCC Mobile Agent</h1>
-      <p className="subtitle">Sign in with your Webex Contact Center account to get started</p>
+      <img className="logo" src="/icons/logo.png" alt="" />
+      <h1>Webex Contact Center</h1>
 
       <button className="primary" onClick={loginLive}>
-        Connect to Webex Contact Center
+        Login
       </button>
     </div>
   );

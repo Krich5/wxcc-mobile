@@ -65,6 +65,12 @@ input {
   font-size: 1.6rem;
 }
 
+.logo {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 8px;
+}
+
 .subtitle,
 .hint {
   color: var(--text-dim);
