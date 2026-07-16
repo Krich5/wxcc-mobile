@@ -2,11 +2,27 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 
+const DASHBOARD_POLL_MS = 15000;
+
+function formatElapsed(totalSeconds) {
+  const total = Math.max(0, Math.round(totalSeconds));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
 export function PresenceBar() {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  // The state-change reason (e.g. "Login") only tells us WHAT state we're in; the
+  // duration comes from the same WxCC agentSession record the dashboard already reads
+  // (real, server-tracked elapsed time -- not a client timer that resets on reload),
+  // ticked locally between polls.
+  const [selfBase, setSelfBase] = useState(null); // { baseSec, fetchedAtMs }
+  const [, forceTick] = useState(0);
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -14,6 +30,30 @@ export function PresenceBar() {
       .then(({ codes }) => setIdleCodes(codes))
       .catch((err) => setNotice(`Couldn't load idle codes: ${err.message}`));
   }, [session.mode]);
+
+  useEffect(() => {
+    if (session.mode !== 'live') return;
+    let cancelled = false;
+    const load = () => {
+      api('/api/agent/dashboard')
+        .then(({ self }) => {
+          if (cancelled || !self) return;
+          setSelfBase({ baseSec: self.durationSec, fetchedAtMs: Date.now() });
+        })
+        .catch(() => {});
+    };
+    load();
+    const interval = setInterval(load, DASHBOARD_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [session.mode]);
+
+  useEffect(() => {
+    const tick = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   const applyState = async (value) => {
     if (value.startsWith('current:')) return; // placeholder option, not a real choice
@@ -57,6 +97,11 @@ export function PresenceBar() {
     ? 'Available'
     : matchedCode?.id || (currentIdleName ? `current:${currentIdleName}` : '');
 
+  const elapsed = selfBase
+    ? formatElapsed(selfBase.baseSec + (Date.now() - selfBase.fetchedAtMs) / 1000)
+    : null;
+  const labelWithElapsed = (value, label) => (value === selectedValue && elapsed ? `${label} ${elapsed}` : label);
+
   return (
     <>
       <header className="presence-bar">
@@ -67,13 +112,15 @@ export function PresenceBar() {
             value={selectedValue}
             onChange={(e) => applyState(e.target.value)}
           >
-            <option value="Available">Available</option>
+            <option value="Available">{labelWithElapsed('Available', 'Available')}</option>
             {currentIdleName && !matchedCode && (
-              <option value={`current:${currentIdleName}`}>{currentIdleName}</option>
+              <option value={`current:${currentIdleName}`}>
+                {labelWithElapsed(`current:${currentIdleName}`, currentIdleName)}
+              </option>
             )}
             {idleCodes.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {labelWithElapsed(c.id, c.name)}
               </option>
             ))}
           </select>

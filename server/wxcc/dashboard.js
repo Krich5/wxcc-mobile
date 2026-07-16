@@ -395,6 +395,11 @@ export async function getDashboard(session) {
   });
   agentRows.sort((a, b) => a.team.localeCompare(b.team) || b.durationSec - a.durationSec);
 
+  const selfRow = agentRows.find((r) => r.id === ctx.agentId);
+  const self = selfRow
+    ? { state: selfRow.state, stateLabel: selfRow.stateLabel, durationSec: selfRow.durationSec }
+    : null;
+
   return {
     metrics: {
       waitingNow: totals.waiting,
@@ -425,5 +430,6 @@ export async function getDashboard(session) {
       rona: r.rona,
     })),
     stateCounts,
+    self,
   };
 }
