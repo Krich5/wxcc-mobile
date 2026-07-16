@@ -6,6 +6,8 @@
   --text-dim: #93a3c2;
   --danger: #e5484d;
   --success: #2fb376;
+  --amber: #d9a441;
+  --wrapup: #7c7ce0;
 }
 
 * {
@@ -304,36 +306,143 @@ button.primary:disabled {
   color: var(--danger);
 }
 
-.queue-list {
+.dashboard {
   width: 100%;
-  max-width: 320px;
-  background: var(--bg-elevated);
-  border: 1px solid #263457;
-  border-radius: 14px;
-  padding: 14px 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   text-align: left;
 }
 
-.queue-list-title {
-  margin: 0 0 8px;
-  font-size: 0.8rem;
+.stat-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.stat-card {
+  background: var(--bg-elevated);
+  border: 1px solid #263457;
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.stat-card-label {
+  margin: 0 0 4px;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.queue-list ul {
-  list-style: none;
+.stat-card-value {
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
 }
 
-.queue-list li {
-  font-size: 0.9rem;
+.dashboard-section-title {
+  margin: 0 0 10px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.state-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.state-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--bg-elevated);
+  border: 1px solid #263457;
+}
+
+.state-pill-available {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+.state-pill-connected {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+.state-pill-wrapup {
+  color: var(--wrapup);
+  border-color: var(--wrapup);
+}
+
+.state-pill-idle {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.dashboard-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #263457;
+  border-radius: 14px;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.dashboard-table thead {
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dashboard-table tbody tr:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.state-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.state-badge-available {
+  background: rgba(47, 179, 118, 0.15);
+  color: var(--success);
+}
+
+.state-badge-onCall {
+  background: rgba(217, 164, 65, 0.15);
+  color: var(--amber);
+}
+
+.state-badge-ringing,
+.state-badge-wrapUp {
+  background: rgba(124, 124, 224, 0.15);
+  color: var(--wrapup);
+}
+
+.state-badge-idle,
+.state-badge-offline {
+  background: rgba(229, 72, 77, 0.15);
+  color: var(--danger);
 }
 
 button.link {

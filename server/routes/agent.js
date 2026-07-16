@@ -1,6 +1,7 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
+import { getDashboard } from '../wxcc/dashboard.js';
 
 const router = express.Router();
 
@@ -88,6 +89,16 @@ router.get('/me', (req, res) => {
   });
 });
 
+router.get('/dashboard', async (req, res) => {
+  if (req.session.mode !== 'live') return res.status(400).json({ ok: false, error: 'Live mode only' });
+  try {
+    const dashboard = await getDashboard(req.session);
+    res.json({ ok: true, ...dashboard });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/teams', async (req, res) => {
   if (req.session.mode !== 'live') {
     return res.status(400).json({ ok: false, error: 'Team lookup is only available in live mode' });
@@ -96,16 +107,6 @@ router.get('/teams', async (req, res) => {
     const teams = await live.listTeams(req.session);
     const defaultDialNumber = await live.getDefaultDialNumber(req.session);
     res.json({ ok: true, teams, defaultDialNumber });
-  } catch (err) {
-    res.status(502).json({ ok: false, error: err.message });
-  }
-});
-
-router.get('/queues', async (req, res) => {
-  if (req.session.mode !== 'live') return res.json({ ok: true, queues: [] });
-  try {
-    const queues = await live.getQueues(req.session);
-    res.json({ ok: true, queues });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

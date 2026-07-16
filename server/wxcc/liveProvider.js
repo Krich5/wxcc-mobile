@@ -6,13 +6,13 @@
 // beyond the POC. Each TODO marks a spot to double check.
 import WebSocket from 'ws';
 
-function baseUrl() {
+export function baseUrl() {
   const url = process.env.WXCC_API_BASE_URL;
   if (!url) throw new Error('WXCC_API_BASE_URL is not configured');
   return url;
 }
 
-async function authedFetch(session, path, opts = {}) {
+export async function authedFetch(session, path, opts = {}) {
   if (!session.tokens?.access_token) {
     throw new Error('Not connected to Webex Contact Center (no access token) - use /api/auth/login first');
   }
@@ -64,7 +64,7 @@ async function resolveOrgId(session) {
   return session.wxccOrgId;
 }
 
-async function resolveAgentContext(session) {
+export async function resolveAgentContext(session) {
   // Confirmed pipeline: GET https://webexapis.com/v1/people/me -> decode its base64 id
   // AND its base64 orgId (same response, no separate lookup needed) -> GET
   // /organization/{orgid}/v2/user/by-ci-user-id/{ciUserId} for the WxCC user record
@@ -128,7 +128,7 @@ export async function listTeams(session) {
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
-async function loadAgentProfile(session) {
+export async function loadAgentProfile(session) {
   if (session.agentProfileData) return session.agentProfileData;
   const ctx = await resolveAgentContext(session);
   if (!ctx?.agentProfileId) {
@@ -157,25 +157,6 @@ async function resolveCodeNames(session, ids) {
     )}`
   );
   return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
-}
-
-export async function getQueues(session) {
-  // GET /organization/{orgid}/v3/contact-service-queue (v3, unlike team/user/
-  // auxiliary-code which are v2) filtered to the queue IDs on the agent's desktop
-  // profile. The OrgId header (alongside the usual Bearer token) is confirmed from
-  // another in-house WxCC dashboard project that calls this same endpoint.
-  const profile = await loadAgentProfile(session);
-  const queueIds = profile?.queues || [];
-  if (!queueIds.length) return [];
-  const ctx = await resolveAgentContext(session);
-  const data = await authedFetch(
-    session,
-    `/organization/${ctx.orgId}/v3/contact-service-queue?filter=${encodeURIComponent(
-      `id=in=(${queueIds.map((id) => `"${id}"`).join(',')})`
-    )}`,
-    { headers: { OrgId: ctx.orgId } }
-  );
-  return (data?.data || []).map((q) => ({ id: q.id, name: q.name || q.customName || q.id }));
 }
 
 export async function getIdleCodes(session) {
