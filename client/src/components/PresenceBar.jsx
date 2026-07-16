@@ -59,11 +59,6 @@ export function PresenceBar() {
   return (
     <>
       <header className="presence-bar">
-        <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
-          <span />
-          <span />
-          <span />
-        </button>
         <select
           className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
           value={selectedValue}
@@ -79,6 +74,11 @@ export function PresenceBar() {
             </option>
           ))}
         </select>
+        <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
+          <span />
+          <span />
+          <span />
+        </button>
       </header>
 
       {menuOpen && (

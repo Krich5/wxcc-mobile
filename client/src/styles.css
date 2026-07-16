@@ -175,7 +175,7 @@ button.primary:disabled {
 .presence-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
   padding: 16px;
   background: var(--bg-elevated);
