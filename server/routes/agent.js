@@ -18,6 +18,7 @@ router.post('/login', async (req, res) => {
         ? await provider.login(req.session, { dialNumber, teamId })
         : provider.login(req.session, { name });
     let notificationsError = null;
+    let presenceError = null;
     if (mode === 'live') {
       // A failed WebSocket subscribe shouldn't strand the agent on the login screen --
       // they're already logged in on WxCC's side by this point. Surface it as a warning.
@@ -26,6 +27,16 @@ router.post('/login', async (req, res) => {
       } catch (err) {
         notificationsError = err.message;
       }
+      // Land in the org's configured default idle reason (e.g. "Login") instead of
+      // assuming Available -- matches how the real desktop behaves post-login.
+      try {
+        const defaultIdle = await live.getDefaultIdleCode(req.session);
+        if (defaultIdle) {
+          await live.setState(req.session, 'Idle', { auxCodeId: defaultIdle.id, reason: defaultIdle.name });
+        }
+      } catch (err) {
+        presenceError = err.message;
+      }
     }
     res.json({
       ok: true,
@@ -33,6 +44,7 @@ router.post('/login', async (req, res) => {
       agentState: req.session.agentState,
       data,
       notificationsError,
+      presenceError,
     });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });

@@ -67,6 +67,9 @@ function LiveAgentLoginForm() {
           `Signed in, but real-time task alerts aren't working yet: ${result.notificationsError}`
         );
       }
+      if (result.presenceError) {
+        setNotice(`Signed in, but couldn't set your default status: ${result.presenceError}`);
+      }
       await refresh();
     } catch (err) {
       setError(err.message);

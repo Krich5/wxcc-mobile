@@ -54,7 +54,7 @@ export function PresenceBar() {
       <div className="agent-name">{session.profile?.name || session.profile?.id || 'Agent'}</div>
       <div className="state-pills">
         <button
-          className={`pill ${session.agentState === 'Available' ? 'active' : ''}`}
+          className={`pill pill-success ${session.agentState === 'Available' ? 'active' : ''}`}
           onClick={setAvailable}
         >
           Available
@@ -62,7 +62,7 @@ export function PresenceBar() {
         {presetButtons.map(({ keyword, code }) => (
           <button
             key={keyword}
-            className={`pill ${session.agentState === `Idle: ${code?.name}` ? 'active' : ''}`}
+            className={`pill pill-danger ${session.agentState === `Idle: ${code?.name}` ? 'active' : ''}`}
             onClick={() => code && setIdle(code)}
             disabled={!code}
             title={code ? undefined : `No "${keyword}" idle code found on your profile`}

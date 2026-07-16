@@ -124,7 +124,7 @@ async function resolveCodeNames(session, ids) {
       `id=in=(${ids.map((id) => `"${id}"`).join(',')})`
     )}`
   );
-  return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id }));
+  return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
 }
 
 export async function getIdleCodes(session) {
@@ -135,6 +135,13 @@ export async function getIdleCodes(session) {
 export async function getWrapUpCodes(session) {
   const profile = await loadAgentProfile(session);
   return resolveCodeNames(session, profile?.wrapUpCodes);
+}
+
+export async function getDefaultIdleCode(session) {
+  // Confirmed: /v2/auxiliary-code entries have a defaultCode flag (only one true per
+  // workTypeCode) -- the agent should land in this idle reason immediately after login.
+  const codes = await getIdleCodes(session);
+  return codes.find((c) => c.defaultCode) || null;
 }
 
 export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION' }) {
