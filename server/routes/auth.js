@@ -60,4 +60,15 @@ router.get('/status', (req, res) => {
   res.json({ connected: Boolean(req.session.tokens), mode: req.session.mode });
 });
 
+router.get('/token', (req, res) => {
+  // Debug-only: exposes this session's own access token so it can be tested directly
+  // in Postman/curl. Deliberately omits the refresh_token (longer-lived, more
+  // sensitive) -- only the short-lived access_token is returned.
+  if (!req.session.tokens?.access_token) {
+    return res.status(400).json({ ok: false, error: 'Not connected -- use /api/auth/login first' });
+  }
+  const { access_token, token_type, expires_in } = req.session.tokens;
+  res.json({ ok: true, access_token, token_type, expires_in });
+});
+
 export default router;
