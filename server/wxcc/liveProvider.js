@@ -24,11 +24,11 @@ async function authedFetch(session, path, opts = {}) {
       ...opts.headers,
     },
   });
+  const text = await res.text();
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`WxCC API ${path} failed: ${res.status} ${body}`);
+    throw new Error(`WxCC API ${path} failed: ${res.status} ${text}`);
   }
-  return res.status === 204 ? null : res.json();
+  return text ? JSON.parse(text) : null;
 }
 
 export async function listTeams(session) {
