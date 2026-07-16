@@ -83,7 +83,8 @@ input {
   color: var(--text-dim);
 }
 
-.field input {
+.field input,
+.field select {
   padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid #263457;

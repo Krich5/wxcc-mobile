@@ -31,6 +31,35 @@ async function authedFetch(session, path, opts = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+async function webexIdentity(session) {
+  if (session.webexIdentity) return session.webexIdentity;
+  // Standard Webex Identity API (same OAuth token, not WxCC-specific) -- used just to
+  // learn the signed-in user's orgId/personId so we can look up their WxCC teams.
+  const res = await fetch('https://webexapis.com/v1/people/me', {
+    headers: { Authorization: `Bearer ${session.tokens?.access_token}` },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Webex people/me failed: ${res.status} ${body}`);
+  }
+  const me = await res.json();
+  session.webexIdentity = { userId: me.id, orgId: me.orgId };
+  return session.webexIdentity;
+}
+
+export async function listTeams(session) {
+  // Confirmed against developer.webex.com/webex-contact-center/docs/api/v1/team/list-teams
+  // (GET /organization/{orgid}/v2/team, RSQL `filter` query param, userId is filterable).
+  // Requires the org-config scope (cjp:config or cjp:config_read) on the Integration in
+  // addition to cjp:user -- if this 401s, that's the first thing to check.
+  const { userId, orgId } = await webexIdentity(session);
+  const data = await authedFetch(
+    session,
+    `/organization/${orgId}/v2/team?filter=${encodeURIComponent(`userId==${userId}`)}`
+  );
+  return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
+}
+
 export async function login(session, { dialNumber, teamId, deviceType = 'BROWSER' }) {
   // TODO verify path/body against POST /v1/agents/login in your Postman collection.
   const data = await authedFetch(session, '/v1/agents/login', {

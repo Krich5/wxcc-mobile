@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 
@@ -67,10 +67,24 @@ function ModeChoice() {
 
 function LiveAgentLoginForm() {
   const { refresh } = useSession();
+  const [teams, setTeams] = useState(null); // null = loading, [] = failed/empty (fall back to free text)
+  const [teamsError, setTeamsError] = useState(null);
   const [teamId, setTeamId] = useState('');
   const [dialNumber, setDialNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api('/api/agent/teams')
+      .then(({ teams: list }) => {
+        setTeams(list);
+        if (list[0]) setTeamId(list[0].id);
+      })
+      .catch((err) => {
+        setTeamsError(err.message);
+        setTeams([]);
+      });
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -98,13 +112,37 @@ function LiveAgentLoginForm() {
     <form className="screen login-screen" onSubmit={submit}>
       <h1>Connected to Webex</h1>
       <p className="subtitle">
-        Enter your team and dial number to complete agent login against the real WxCC API.
+        Choose your team and enter a dial number to complete agent login against the real WxCC API.
       </p>
 
       <label className="field">
-        Team ID
-        <input value={teamId} onChange={(e) => setTeamId(e.target.value)} required />
+        Team
+        {teams === null ? (
+          <input value="Loading your teams…" disabled />
+        ) : teams.length > 0 ? (
+          <select value={teamId} onChange={(e) => setTeamId(e.target.value)} required>
+            {teams.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            value={teamId}
+            onChange={(e) => setTeamId(e.target.value)}
+            placeholder="Team ID"
+            required
+          />
+        )}
       </label>
+      {teamsError && (
+        <p className="hint">
+          Couldn't load your teams from WxCC ({teamsError}) &mdash; enter a Team ID manually, or check{' '}
+          <code>listTeams()</code> in <code>server/wxcc/liveProvider.js</code>.
+        </p>
+      )}
+
       <label className="field">
         Dial number
         <input value={dialNumber} onChange={(e) => setDialNumber(e.target.value)} required />

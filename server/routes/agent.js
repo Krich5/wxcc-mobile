@@ -52,6 +52,18 @@ router.get('/me', (req, res) => {
   });
 });
 
+router.get('/teams', async (req, res) => {
+  if (req.session.mode !== 'live') {
+    return res.status(400).json({ ok: false, error: 'Team lookup is only available in live mode' });
+  }
+  try {
+    const teams = await live.listTeams(req.session);
+    res.json({ ok: true, teams });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/simulate-task', (req, res) => {
   try {
     const task = mock.simulateIncomingTask(req.session);
