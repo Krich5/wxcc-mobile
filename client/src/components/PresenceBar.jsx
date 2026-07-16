@@ -6,6 +6,7 @@ export function PresenceBar() {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -59,26 +60,29 @@ export function PresenceBar() {
   return (
     <>
       <header className="presence-bar">
-        <select
-          className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
-          value={selectedValue}
-          onChange={(e) => applyState(e.target.value)}
-        >
-          <option value="Available">Available</option>
-          {currentIdleName && !matchedCode && (
-            <option value={`current:${currentIdleName}`}>{currentIdleName}</option>
-          )}
-          {idleCodes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
-          <span />
-          <span />
-          <span />
-        </button>
+        <div className="presence-bar-team">{session.profile?.teamName || 'Agent'}</div>
+        <div className="presence-bar-actions">
+          <select
+            className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
+            value={selectedValue}
+            onChange={(e) => applyState(e.target.value)}
+          >
+            <option value="Available">Available</option>
+            {currentIdleName && !matchedCode && (
+              <option value={`current:${currentIdleName}`}>{currentIdleName}</option>
+            )}
+            {idleCodes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
+            <span />
+            <span />
+            <span />
+          </button>
+        </div>
       </header>
 
       {menuOpen && (
@@ -97,8 +101,23 @@ export function PresenceBar() {
                 <span className="side-panel-value">{session.profile?.dialNumber || '—'}</span>
               </div>
             </div>
-            <button className="secondary" onClick={logout}>
+            <button className="secondary" onClick={() => setConfirmSignOut(true)}>
               Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmSignOut && (
+        <div className="overlay" onClick={() => setConfirmSignOut(false)}>
+          <div className="card" onClick={(e) => e.stopPropagation()}>
+            <h2>Sign out?</h2>
+            <p>You'll need to reconnect to Webex to sign back in.</p>
+            <button className="primary" onClick={logout}>
+              Sign Out
+            </button>
+            <button className="secondary" onClick={() => setConfirmSignOut(false)}>
+              Cancel
             </button>
           </div>
         </div>
