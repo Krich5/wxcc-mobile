@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 
+// Mobile screen only has room for a couple of quick states -- Lunch/Break cover the
+// common cases. Matched by name against the agent's real idle codes so the actual
+// auxCodeId/reason still goes to the real API.
+const IDLE_PRESETS = ['lunch', 'break'];
+
 export function PresenceBar() {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
@@ -22,9 +27,7 @@ export function PresenceBar() {
     }
   };
 
-  const setIdle = async (e) => {
-    const code = idleCodes.find((c) => c.id === e.target.value);
-    if (!code) return;
+  const setIdle = async (code) => {
     try {
       await api('/api/agent/state', {
         method: 'POST',
@@ -41,31 +44,32 @@ export function PresenceBar() {
     window.location.reload();
   };
 
-  const isIdle = session.agentState?.startsWith('Idle');
+  const presetButtons = IDLE_PRESETS.map((keyword) => ({
+    keyword,
+    code: idleCodes.find((c) => c.name.toLowerCase().includes(keyword)),
+  }));
 
   return (
     <header className="presence-bar">
       <div className="agent-name">{session.profile?.name || session.profile?.id || 'Agent'}</div>
       <div className="state-pills">
-        <button className={`pill ${session.agentState === 'Available' ? 'active' : ''}`} onClick={setAvailable}>
+        <button
+          className={`pill ${session.agentState === 'Available' ? 'active' : ''}`}
+          onClick={setAvailable}
+        >
           Available
         </button>
-        {idleCodes.length > 0 ? (
-          <select className={`pill-select ${isIdle ? 'active' : ''}`} value="" onChange={setIdle}>
-            <option value="" disabled>
-              {isIdle ? session.agentState.replace('Idle: ', '') : 'Idle…'}
-            </option>
-            {idleCodes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <button className={`pill ${isIdle ? 'active' : ''}`} disabled title="No idle codes loaded">
-            Idle
+        {presetButtons.map(({ keyword, code }) => (
+          <button
+            key={keyword}
+            className={`pill ${session.agentState === `Idle: ${code?.name}` ? 'active' : ''}`}
+            onClick={() => code && setIdle(code)}
+            disabled={!code}
+            title={code ? undefined : `No "${keyword}" idle code found on your profile`}
+          >
+            {code ? code.name : keyword[0].toUpperCase() + keyword.slice(1)}
           </button>
-        )}
+        ))}
       </div>
       <button className="link" onClick={logout}>
         Sign out

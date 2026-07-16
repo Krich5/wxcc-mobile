@@ -182,20 +182,8 @@ button.primary:disabled {
   border-color: var(--brand);
 }
 
-.pill-select {
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid #263457;
-  font-size: 0.85rem;
-  max-width: 160px;
-}
-
-.pill-select.active {
-  background: var(--brand);
-  color: white;
-  border-color: var(--brand);
+.pill:disabled {
+  opacity: 0.4;
 }
 
 button.link {
