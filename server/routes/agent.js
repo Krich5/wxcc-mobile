@@ -1,0 +1,121 @@
+import express from 'express';
+import * as mock from '../wxcc/mockProvider.js';
+import * as live from '../wxcc/liveProvider.js';
+
+const router = express.Router();
+
+function providerFor(session) {
+  return session.mode === 'live' ? live : mock;
+}
+
+router.post('/login', async (req, res) => {
+  const { mode = 'mock', name, dialNumber, teamId } = req.body || {};
+  req.session.mode = mode;
+  try {
+    const provider = providerFor(req.session);
+    const data =
+      mode === 'live'
+        ? await provider.login(req.session, { dialNumber, teamId })
+        : provider.login(req.session, { name });
+    if (mode === 'live') await live.subscribeNotifications(req.session);
+    res.json({ ok: true, profile: req.session.profile, agentState: req.session.agentState, data });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/logout', async (req, res) => {
+  try {
+    await providerFor(req.session).logout(req.session);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/state', async (req, res) => {
+  const { state } = req.body || {};
+  try {
+    const data = await providerFor(req.session).setState(req.session, state);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/me', (req, res) => {
+  res.json({
+    mode: req.session.mode,
+    profile: req.session.profile,
+    agentState: req.session.agentState,
+    currentTask: req.session.currentTask,
+  });
+});
+
+router.post('/simulate-task', (req, res) => {
+  try {
+    const task = mock.simulateIncomingTask(req.session);
+    res.json({ ok: true, task });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/answer', async (req, res) => {
+  try {
+    const data = await providerFor(req.session).answerTask(req.session, req.params.id);
+    res.json({ ok: true, task: data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/end', async (req, res) => {
+  try {
+    const data = await providerFor(req.session).endTask(req.session, req.params.id);
+    res.json({ ok: true, task: data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/wrapup', async (req, res) => {
+  const { code } = req.body || {};
+  try {
+    const data = await providerFor(req.session).wrapupTask(req.session, req.params.id, code);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/events', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+  res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const eventNames = ['task:offered', 'task:connected', 'task:ended', 'task:wrapup-complete'];
+  const listeners = eventNames.map((name) => {
+    const handler = (payload) => send(name, payload);
+    req.session.emitter.on(name, handler);
+    return { name, handler };
+  });
+
+  send('ready', { agentState: req.session.agentState });
+  const keepAlive = setInterval(() => res.write(': ping\n\n'), 25000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    listeners.forEach(({ name, handler }) => req.session.emitter.off(name, handler));
+  });
+});
+
+export default router;
