@@ -52,18 +52,27 @@ async function webexPeopleMe(session) {
   return text ? JSON.parse(text) : null;
 }
 
+async function resolveOrgId(session) {
+  // Split out from resolveAgentContext() so a failed by-ci-user-id lookup (e.g. this
+  // agent isn't a WxCC user, or some other per-agent issue) never falls back to a
+  // different, hardcoded org via WXCC_ORG_ID -- that env var is this deployment's
+  // owner's org, which is simply wrong for any other agent/org.
+  if (session.wxccOrgId) return session.wxccOrgId;
+  const me = await webexPeopleMe(session);
+  session.wxccOrgId = decodeSparkId(me.orgId);
+  session.wxccCiUserId = decodeSparkId(me.id);
+  return session.wxccOrgId;
+}
+
 async function resolveAgentContext(session) {
   // Confirmed pipeline: GET https://webexapis.com/v1/people/me -> decode its base64 id
   // AND its base64 orgId (same response, no separate lookup needed) -> GET
   // /organization/{orgid}/v2/user/by-ci-user-id/{ciUserId} for the WxCC user record
   // (id = agentId used by the state-change PUT, agentProfileId for idle/wrap-up codes,
-  // teamIds for the team picker). No WXCC_ORG_ID config needed -- org ID is resolved
-  // per-agent from their own token.
+  // teamIds for the team picker).
   if (session.agentContext) return session.agentContext;
-  const me = await webexPeopleMe(session);
-  const ciUserId = decodeSparkId(me.id);
-  const orgId = decodeSparkId(me.orgId);
-  const user = await authedFetch(session, `/organization/${orgId}/v2/user/by-ci-user-id/${ciUserId}`);
+  const orgId = await resolveOrgId(session);
+  const user = await authedFetch(session, `/organization/${orgId}/v2/user/by-ci-user-id/${session.wxccCiUserId}`);
   if (!user?.id) throw new Error('No WxCC user found for your Webex account');
   session.agentContext = {
     orgId,
@@ -76,13 +85,17 @@ async function resolveAgentContext(session) {
 
 export async function listTeams(session) {
   // Lists only the teams the signed-in agent can log into, via resolveAgentContext()'s
-  // teamIds. Falls back to every team in the org (using WXCC_ORG_ID, if configured) if
-  // identity resolution fails.
+  // teamIds. Falls back to every team in the agent's OWN org (resolveOrgId(), which
+  // only needs people/me to succeed, not the per-agent by-ci-user-id lookup) if the
+  // rest of identity resolution fails. WXCC_ORG_ID is a last resort only if people/me
+  // itself fails -- it's this deployment's owner's org, not necessarily the signed-in
+  // agent's.
   let ctx = null;
   try {
     ctx = await resolveAgentContext(session);
   } catch {
-    // fall through to the org-wide list below
+    // fall through -- resolveOrgId() may still have succeeded even though the
+    // per-agent lookup failed
   }
   if (ctx?.teamIds?.length) {
     const data = await authedFetch(
@@ -93,11 +106,14 @@ export async function listTeams(session) {
     );
     return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
   }
-  const fallbackOrgId = ctx?.orgId || process.env.WXCC_ORG_ID;
-  if (!fallbackOrgId) {
+  let orgId = ctx?.orgId || session.wxccOrgId;
+  if (!orgId) {
+    orgId = await resolveOrgId(session).catch(() => process.env.WXCC_ORG_ID);
+  }
+  if (!orgId) {
     throw new Error('Could not resolve your org (people/me failed and WXCC_ORG_ID is not set as a fallback)');
   }
-  const data = await authedFetch(session, `/organization/${fallbackOrgId}/v2/team`);
+  const data = await authedFetch(session, `/organization/${orgId}/v2/team`);
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
