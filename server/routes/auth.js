@@ -16,12 +16,13 @@ router.get('/login', (req, res) => {
     response_type: 'code',
     client_id: process.env.WEBEX_CLIENT_ID,
     redirect_uri: process.env.WEBEX_REDIRECT_URI,
-    // cjp:user is the WxCC scope itself; spark:all lets us call the standard Webex
-    // people/me endpoint to resolve orgId/userId for the team lookup (this Integration
-    // has spark:all enabled rather than the granular spark:people_read). Both scopes
-    // must be enabled on the Integration at developer.webex-cx.com or Webex will reject
-    // the authorize request with invalid_scope.
-    scope: 'cjp:user spark:all',
+    // cjp:user is the WxCC agent-runtime scope; cjp:config_read is required separately
+    // for org config lookups like List Teams (agent login/state doesn't need it, which
+    // is why this only surfaced once we added the team dropdown). spark:all lets us
+    // call the standard Webex people/me endpoint to resolve orgId/userId. All three
+    // scopes must be enabled on the Integration at developer.webex-cx.com or Webex will
+    // reject the authorize request with invalid_scope.
+    scope: 'cjp:user cjp:config_read spark:all',
     state: req.session.id,
   });
   res.redirect(`${AUTHORIZE_URL}?${params}`);
