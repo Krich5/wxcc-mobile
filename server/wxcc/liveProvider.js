@@ -31,12 +31,6 @@ async function authedFetch(session, path, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-function orgId() {
-  const id = process.env.WXCC_ORG_ID;
-  if (!id) throw new Error('WXCC_ORG_ID is not configured');
-  return id;
-}
-
 function decodeSparkId(encoded) {
   // Webex "Cisco Spark" IDs are base64 of a URN like "ciscospark://us/PEOPLE/<uuid>" --
   // the UUID is the last path segment.
@@ -60,15 +54,19 @@ async function webexPeopleMe(session) {
 
 async function resolveAgentContext(session) {
   // Confirmed pipeline: GET https://webexapis.com/v1/people/me -> decode its base64 id
-  // to get the CI user ID -> GET /organization/{orgid}/v2/user/by-ci-user-id/{ciUserId}
-  // for the WxCC user record (id = agentId used by the state-change PUT, agentProfileId
-  // for idle/wrap-up codes, teamIds for the team picker).
+  // AND its base64 orgId (same response, no separate lookup needed) -> GET
+  // /organization/{orgid}/v2/user/by-ci-user-id/{ciUserId} for the WxCC user record
+  // (id = agentId used by the state-change PUT, agentProfileId for idle/wrap-up codes,
+  // teamIds for the team picker). No WXCC_ORG_ID config needed -- org ID is resolved
+  // per-agent from their own token.
   if (session.agentContext) return session.agentContext;
   const me = await webexPeopleMe(session);
   const ciUserId = decodeSparkId(me.id);
-  const user = await authedFetch(session, `/organization/${orgId()}/v2/user/by-ci-user-id/${ciUserId}`);
+  const orgId = decodeSparkId(me.orgId);
+  const user = await authedFetch(session, `/organization/${orgId}/v2/user/by-ci-user-id/${ciUserId}`);
   if (!user?.id) throw new Error('No WxCC user found for your Webex account');
   session.agentContext = {
+    orgId,
     agentId: user.id,
     agentProfileId: user.agentProfileId,
     teamIds: user.teamIds || [],
@@ -78,22 +76,28 @@ async function resolveAgentContext(session) {
 
 export async function listTeams(session) {
   // Lists only the teams the signed-in agent can log into, via resolveAgentContext()'s
-  // teamIds. Falls back to every team in the org if identity resolution fails.
+  // teamIds. Falls back to every team in the org (using WXCC_ORG_ID, if configured) if
+  // identity resolution fails.
+  let ctx = null;
   try {
-    const ctx = await resolveAgentContext(session);
-    if (ctx.teamIds?.length) {
-      const data = await authedFetch(
-        session,
-        `/organization/${orgId()}/v2/team?filter=${encodeURIComponent(
-          `id=in=(${ctx.teamIds.map((id) => `"${id}"`).join(',')})`
-        )}`
-      );
-      return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
-    }
+    ctx = await resolveAgentContext(session);
   } catch {
     // fall through to the org-wide list below
   }
-  const data = await authedFetch(session, `/organization/${orgId()}/v2/team`);
+  if (ctx?.teamIds?.length) {
+    const data = await authedFetch(
+      session,
+      `/organization/${ctx.orgId}/v2/team?filter=${encodeURIComponent(
+        `id=in=(${ctx.teamIds.map((id) => `"${id}"`).join(',')})`
+      )}`
+    );
+    return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
+  }
+  const fallbackOrgId = ctx?.orgId || process.env.WXCC_ORG_ID;
+  if (!fallbackOrgId) {
+    throw new Error('Could not resolve your org (people/me failed and WXCC_ORG_ID is not set as a fallback)');
+  }
+  const data = await authedFetch(session, `/organization/${fallbackOrgId}/v2/team`);
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
@@ -108,7 +112,7 @@ async function loadAgentProfile(session) {
   // wrapUpCodes: [ids], ... }.
   session.agentProfileData = await authedFetch(
     session,
-    `/organization/${orgId()}/agent-profile/${ctx.agentProfileId}`
+    `/organization/${ctx.orgId}/agent-profile/${ctx.agentProfileId}`
   );
   return session.agentProfileData;
 }
@@ -118,9 +122,10 @@ async function resolveCodeNames(session, ids) {
   // Confirmed: idle codes and wrap-up codes are both drawn from the same Auxiliary
   // Code resource (GET /organization/{orgid}/v2/auxiliary-code) -- the agent-profile
   // only gives us bare IDs, this resolves them to display names.
+  const ctx = await resolveAgentContext(session);
   const data = await authedFetch(
     session,
-    `/organization/${orgId()}/v2/auxiliary-code?filter=${encodeURIComponent(
+    `/organization/${ctx.orgId}/v2/auxiliary-code?filter=${encodeURIComponent(
       `id=in=(${ids.map((id) => `"${id}"`).join(',')})`
     )}`
   );

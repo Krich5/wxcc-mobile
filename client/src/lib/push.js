@@ -5,8 +5,21 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
 }
 
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isStandalone() {
+  return navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+}
+
 export async function enableNotifications() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (isIos() && !isStandalone()) {
+      throw new Error(
+        'iOS only supports push notifications for an installed app -- tap Share, then "Add to Home Screen", then open it from there and try again'
+      );
+    }
     throw new Error('Push notifications are not supported on this browser/device');
   }
   const permission = await Notification.requestPermission();
