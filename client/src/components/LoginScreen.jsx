@@ -33,7 +33,7 @@ function ModeChoice() {
 }
 
 function LiveAgentLoginForm() {
-  const { refresh } = useSession();
+  const { refresh, setNotice } = useSession();
   const [email, setEmail] = useState('');
   const [teams, setTeams] = useState(null); // null = loading, [] = failed/empty (fall back to free text)
   const [teamsError, setTeamsError] = useState(null);
@@ -73,10 +73,15 @@ function LiveAgentLoginForm() {
     setBusy(true);
     setError(null);
     try {
-      await api('/api/agent/login', {
+      const result = await api('/api/agent/login', {
         method: 'POST',
         body: JSON.stringify({ mode: 'live', teamId, dialNumber }),
       });
+      if (result.notificationsError) {
+        setNotice(
+          `Signed in, but real-time task alerts aren't working yet: ${result.notificationsError}`
+        );
+      }
       await refresh();
     } catch (err) {
       setError(err.message);

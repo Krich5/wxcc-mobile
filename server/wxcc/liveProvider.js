@@ -132,7 +132,7 @@ export async function subscribeNotifications(session) {
   // used for a newly-offered contact are best-effort placeholders here.
   const sub = await authedFetch(session, '/v1/notification/subscribe', {
     method: 'POST',
-    body: JSON.stringify({ isKeepAliveEnabled: true, keepAliveInterval: 30 }),
+    body: JSON.stringify({ isKeepAliveEnabled: true, keepAliveInterval: 30, force: true }),
   });
   if (!sub?.websocketUrl) {
     throw new Error('Notification subscribe response did not include a websocketUrl');

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useSession } from './context/SessionContext.jsx';
 import { LoginScreen } from './components/LoginScreen.jsx';
 import { PresenceBar } from './components/PresenceBar.jsx';
@@ -8,8 +7,7 @@ import { WrapUpModal } from './components/WrapUpModal.jsx';
 import { enableNotifications } from './lib/push.js';
 
 export default function App() {
-  const { session, loading } = useSession();
-  const [notice, setNotice] = useState(null);
+  const { session, loading, notice, setNotice } = useSession();
 
   if (loading) return <div className="screen center">Loading…</div>;
   if (!session.profile) return <LoginScreen />;

@@ -11,6 +11,7 @@ export function SessionProvider({ children }) {
     currentTask: null,
   });
   const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState(null);
 
   const refresh = useCallback(async () => {
     const data = await api('/api/agent/me');
@@ -33,7 +34,7 @@ export function SessionProvider({ children }) {
   }, []);
 
   return (
-    <SessionContext.Provider value={{ session, setSession, refresh, loading }}>
+    <SessionContext.Provider value={{ session, setSession, refresh, loading, notice, setNotice }}>
       {children}
     </SessionContext.Provider>
   );

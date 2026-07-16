@@ -17,8 +17,23 @@ router.post('/login', async (req, res) => {
       mode === 'live'
         ? await provider.login(req.session, { dialNumber, teamId })
         : provider.login(req.session, { name });
-    if (mode === 'live') await live.subscribeNotifications(req.session);
-    res.json({ ok: true, profile: req.session.profile, agentState: req.session.agentState, data });
+    let notificationsError = null;
+    if (mode === 'live') {
+      // A failed WebSocket subscribe shouldn't strand the agent on the login screen --
+      // they're already logged in on WxCC's side by this point. Surface it as a warning.
+      try {
+        await live.subscribeNotifications(req.session);
+      } catch (err) {
+        notificationsError = err.message;
+      }
+    }
+    res.json({
+      ok: true,
+      profile: req.session.profile,
+      agentState: req.session.agentState,
+      data,
+      notificationsError,
+    });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }
