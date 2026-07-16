@@ -16,11 +16,13 @@ router.get('/login', (req, res) => {
     response_type: 'code',
     client_id: process.env.WEBEX_CLIENT_ID,
     redirect_uri: process.env.WEBEX_REDIRECT_URI,
-    // cjp:user is the WxCC scope itself; spark:people_read lets us call the standard
-    // Webex people/me endpoint to resolve orgId/userId for the team lookup. Both must
-    // also be enabled on the Integration at developer.webex-cx.com or Webex will reject
-    // the authorize request with invalid_scope.
-    scope: 'cjp:user spark:people_read',
+    // cjp:user is the WxCC scope itself; spark:people_write lets us call the standard
+    // Webex people/me endpoint to resolve orgId/userId for the team lookup (this
+    // Integration doesn't have spark:people_read enabled -- Webex's builder treats
+    // people_write as already covering read access). Both scopes must be enabled on
+    // the Integration at developer.webex-cx.com or Webex will reject the authorize
+    // request with invalid_scope.
+    scope: 'cjp:user spark:people_write',
     state: req.session.id,
   });
   res.redirect(`${AUTHORIZE_URL}?${params}`);
