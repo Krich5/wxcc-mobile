@@ -5,6 +5,7 @@ import { useSession } from '../context/SessionContext.jsx';
 export function PresenceBar() {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -56,28 +57,52 @@ export function PresenceBar() {
     : matchedCode?.id || (currentIdleName ? `current:${currentIdleName}` : '');
 
   return (
-    <header className="presence-bar">
-      <div className="agent-name">
-        <strong>Team:</strong> {session.profile?.teamName || session.profile?.name || 'Agent'}
-      </div>
-      <select
-        className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
-        value={selectedValue}
-        onChange={(e) => applyState(e.target.value)}
-      >
-        <option value="Available">Available</option>
-        {currentIdleName && !matchedCode && (
-          <option value={`current:${currentIdleName}`}>{currentIdleName}</option>
-        )}
-        {idleCodes.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <button className="link" onClick={logout}>
-        Sign out
-      </button>
-    </header>
+    <>
+      <header className="presence-bar">
+        <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
+          <span />
+          <span />
+          <span />
+        </button>
+        <select
+          className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
+          value={selectedValue}
+          onChange={(e) => applyState(e.target.value)}
+        >
+          <option value="Available">Available</option>
+          {currentIdleName && !matchedCode && (
+            <option value={`current:${currentIdleName}`}>{currentIdleName}</option>
+          )}
+          {idleCodes.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </header>
+
+      {menuOpen && (
+        <div className="side-panel-overlay" onClick={() => setMenuOpen(false)}>
+          <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+            <button className="side-panel-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+              &times;
+            </button>
+            <div className="side-panel-content">
+              <div className="side-panel-field">
+                <span className="side-panel-label">Team</span>
+                <span className="side-panel-value">{session.profile?.teamName || '—'}</span>
+              </div>
+              <div className="side-panel-field">
+                <span className="side-panel-label">Dial number</span>
+                <span className="side-panel-value">{session.profile?.dialNumber || '—'}</span>
+              </div>
+            </div>
+            <button className="secondary" onClick={logout}>
+              Sign Out
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
