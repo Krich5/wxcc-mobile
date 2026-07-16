@@ -67,11 +67,13 @@ export async function listTeams(session, email) {
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
-export async function login(session, { dialNumber, teamId, deviceType = 'BROWSER' }) {
-  // TODO verify path/body against POST /v1/agents/login in your Postman collection.
-  const data = await authedFetch(session, '/v1/agents/login', {
+export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION' }) {
+  // Confirmed against this org's own Postman/curl example: POST /v2/agents/login
+  // (not /v1), body is exactly {dialNumber, teamId, roles, deviceType} -- no
+  // isExtension field, and deviceType is "EXTENSION" rather than "BROWSER".
+  const data = await authedFetch(session, '/v2/agents/login', {
     method: 'POST',
-    body: JSON.stringify({ dialNumber, teamId, isExtension: false, roles: ['agent'], deviceType }),
+    body: JSON.stringify({ dialNumber, teamId, roles: ['agent'], deviceType }),
   });
   session.agentState = 'Available';
   session.profile = { ...(data?.agent || {}), teamId, dialNumber };
@@ -79,8 +81,9 @@ export async function login(session, { dialNumber, teamId, deviceType = 'BROWSER
 }
 
 export async function logout(session, { reasonCode = 'AgentLogout' } = {}) {
-  // TODO verify path/body against POST /v1/agents/logout.
-  const data = await authedFetch(session, '/v1/agents/logout', {
+  // TODO verify path/body -- bumped to /v2 to match the confirmed login endpoint, but
+  // this specific path/body shape is still unverified.
+  const data = await authedFetch(session, '/v2/agents/logout', {
     method: 'POST',
     body: JSON.stringify({ logoutReason: reasonCode }),
   });
@@ -93,8 +96,9 @@ export async function logout(session, { reasonCode = 'AgentLogout' } = {}) {
 }
 
 export async function setState(session, state, auxCodeId) {
-  // TODO verify path/body against POST /v1/agents/state (Available/Idle + Auxiliary Code).
-  const data = await authedFetch(session, '/v1/agents/state', {
+  // TODO verify path/body -- bumped to /v2 to match the confirmed login endpoint, but
+  // this specific path/body shape is still unverified.
+  const data = await authedFetch(session, '/v2/agents/state', {
     method: 'POST',
     body: JSON.stringify({ state, auxCodeId }),
   });
@@ -104,21 +108,21 @@ export async function setState(session, state, auxCodeId) {
 
 export async function answerTask(session, taskId) {
   // TODO verify against the Call Control REST APIs (accept/answer contact).
-  const data = await authedFetch(session, `/v1/agents/contact/${taskId}/accept`, { method: 'POST' });
+  const data = await authedFetch(session, `/v2/agents/contact/${taskId}/accept`, { method: 'POST' });
   if (session.currentTask?.id === taskId) session.currentTask.status = 'connected';
   return data;
 }
 
 export async function endTask(session, taskId) {
   // TODO verify against the Call Control REST APIs (end contact).
-  const data = await authedFetch(session, `/v1/agents/contact/${taskId}/end`, { method: 'POST' });
+  const data = await authedFetch(session, `/v2/agents/contact/${taskId}/end`, { method: 'POST' });
   if (session.currentTask?.id === taskId) session.currentTask.status = 'wrapup';
   return data;
 }
 
 export async function wrapupTask(session, taskId, code) {
   // TODO verify wrap-up-code submission endpoint/field names.
-  const data = await authedFetch(session, `/v1/agents/contact/${taskId}/wrapup`, {
+  const data = await authedFetch(session, `/v2/agents/contact/${taskId}/wrapup`, {
     method: 'POST',
     body: JSON.stringify({ wrapUpCode: code }),
   });
