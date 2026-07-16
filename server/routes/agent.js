@@ -94,7 +94,8 @@ router.get('/teams', async (req, res) => {
   }
   try {
     const teams = await live.listTeams(req.session);
-    res.json({ ok: true, teams });
+    const defaultDialNumber = await live.getDefaultDialNumber(req.session);
+    res.json({ ok: true, teams, defaultDialNumber });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

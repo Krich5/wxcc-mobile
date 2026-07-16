@@ -69,7 +69,8 @@ async function resolveAgentContext(session) {
   // AND its base64 orgId (same response, no separate lookup needed) -> GET
   // /organization/{orgid}/v2/user/by-ci-user-id/{ciUserId} for the WxCC user record
   // (id = agentId used by the state-change PUT, agentProfileId for idle/wrap-up codes,
-  // teamIds for the team picker).
+  // teamIds for the team picker, deafultDialledNumber -- yes, misspelled in the actual
+  // API response -- for pre-filling the dial number field).
   if (session.agentContext) return session.agentContext;
   const orgId = await resolveOrgId(session);
   const user = await authedFetch(session, `/organization/${orgId}/v2/user/by-ci-user-id/${session.wxccCiUserId}`);
@@ -79,8 +80,18 @@ async function resolveAgentContext(session) {
     agentId: user.id,
     agentProfileId: user.agentProfileId,
     teamIds: user.teamIds || [],
+    defaultDialNumber: user.deafultDialledNumber || '',
   };
   return session.agentContext;
+}
+
+export async function getDefaultDialNumber(session) {
+  try {
+    const ctx = await resolveAgentContext(session);
+    return ctx.defaultDialNumber || '';
+  } catch {
+    return '';
+  }
 }
 
 export async function listTeams(session) {

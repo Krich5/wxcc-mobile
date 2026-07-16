@@ -43,9 +43,10 @@ function LiveAgentLoginForm() {
 
   useEffect(() => {
     api('/api/agent/teams')
-      .then(({ teams: list }) => {
+      .then(({ teams: list, defaultDialNumber }) => {
         setTeams(list);
         if (list[0]) setTeamId(list[0].id);
+        if (defaultDialNumber) setDialNumber(defaultDialNumber);
       })
       .catch((err) => {
         setTeamsError(err.message);
