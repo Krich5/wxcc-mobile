@@ -96,13 +96,14 @@ async function loadAgentProfile(session) {
   return session.agentProfileData;
 }
 
-async function resolveCodeNames(session, ids, resource) {
+async function resolveCodeNames(session, ids) {
   if (!ids?.length) return [];
-  // TODO verify this list endpoint/filter shape against your org's Postman collection --
-  // the agent-profile only gives us code IDs, not display names.
+  // Confirmed: idle codes and wrap-up codes are both drawn from the same Auxiliary
+  // Code resource (GET /organization/{orgid}/v2/auxiliary-code) -- the agent-profile
+  // only gives us bare IDs, this resolves them to display names.
   const data = await authedFetch(
     session,
-    `/organization/${orgId()}/v2/${resource}?filter=${encodeURIComponent(
+    `/organization/${orgId()}/v2/auxiliary-code?filter=${encodeURIComponent(
       `id=in=(${ids.map((id) => `"${id}"`).join(',')})`
     )}`
   );
@@ -111,12 +112,12 @@ async function resolveCodeNames(session, ids, resource) {
 
 export async function getIdleCodes(session) {
   const profile = await loadAgentProfile(session);
-  return resolveCodeNames(session, profile?.idleCodes, 'idle-code');
+  return resolveCodeNames(session, profile?.idleCodes);
 }
 
 export async function getWrapUpCodes(session) {
   const profile = await loadAgentProfile(session);
-  return resolveCodeNames(session, profile?.wrapUpCodes, 'wrap-up-code');
+  return resolveCodeNames(session, profile?.wrapUpCodes);
 }
 
 export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION', email }) {
