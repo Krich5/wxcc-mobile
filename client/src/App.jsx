@@ -41,7 +41,6 @@ export default function App() {
           <>
             <Dashboard />
             <div className="idle-panel">
-              <p>Waiting for a task…</p>
               {!notificationsEnabled && (
                 <button className="secondary" onClick={requestNotifications}>
                   Enable notifications

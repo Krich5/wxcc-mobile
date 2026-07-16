@@ -349,16 +349,57 @@ button.primary:disabled {
   font-weight: 700;
 }
 
-.state-donut-row {
+.agent-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.agent-card {
+  background: var(--bg-elevated);
+  border: 1px solid #263457;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-card-row {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 14px;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.agent-card-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-card-meta {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  justify-content: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.state-donut-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding-top: 6px;
 }
 
 .state-donut {
-  width: 96px;
-  height: 96px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
   flex-shrink: 0;
   display: flex;
@@ -367,8 +408,8 @@ button.primary:disabled {
 }
 
 .state-donut-hole {
-  width: 62px;
-  height: 62px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   background: var(--bg);
   display: flex;
@@ -378,13 +419,13 @@ button.primary:disabled {
 }
 
 .state-donut-total {
-  font-size: 1.1rem;
+  font-size: 1.6rem;
   font-weight: 700;
   line-height: 1.1;
 }
 
 .state-donut-total-label {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -395,9 +436,11 @@ button.primary:disabled {
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
   font-size: 0.85rem;
+  width: 100%;
 }
 
 .state-legend li {
@@ -411,33 +454,6 @@ button.primary:disabled {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
-}
-
-.dashboard-table-wrap {
-  overflow-x: auto;
-  border: 1px solid #263457;
-  border-radius: 14px;
-}
-
-.dashboard-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.72rem;
-  white-space: nowrap;
-}
-
-.dashboard-table th,
-.dashboard-table td {
-  padding: 8px 8px;
-  text-align: left;
-}
-
-.dashboard-table thead {
-  background: var(--bg-elevated);
-  color: var(--text-dim);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .dashboard-table tbody tr:nth-child(odd) {

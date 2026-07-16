@@ -35,7 +35,7 @@ function StateDonut({ stateCounts }) {
   }).join(', ');
 
   return (
-    <div className="state-donut-row">
+    <div className="state-donut-block">
       <div
         className="state-donut"
         style={{ background: total ? `conic-gradient(${stops})` : 'var(--bg-elevated)' }}
@@ -103,39 +103,27 @@ export function Dashboard() {
 
       <div className="dashboard-section">
         <p className="dashboard-section-title">Agent State</p>
-        <StateDonut stateCounts={stateCounts} />
         {agents.length > 0 ? (
-          <div className="dashboard-table-wrap">
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Agent</th>
-                  <th>State</th>
-                  <th>Duration</th>
-                  <th>Idle Code</th>
-                  <th>Handled</th>
-                  <th>RONA</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agents.map((a) => (
-                  <tr key={a.id}>
-                    <td>{a.agent}</td>
-                    <td>
-                      <span className={`state-badge state-badge-${a.state}`}>{a.stateLabel}</span>
-                    </td>
-                    <td>{a.duration}</td>
-                    <td>{a.idleCode}</td>
-                    <td>{a.handled}</td>
-                    <td>{a.rona}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="agent-cards">
+            {agents.map((a) => (
+              <div key={a.id} className="agent-card">
+                <div className="agent-card-row">
+                  <span className="agent-card-name">{a.agent}</span>
+                  <span className={`state-badge state-badge-${a.state}`}>{a.stateLabel}</span>
+                </div>
+                <div className="agent-card-row agent-card-meta">
+                  <span>{a.duration}</span>
+                  <span>{a.idleCode}</span>
+                  <span>Handled {a.handled}</span>
+                  <span>RONA {a.rona}</span>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="hint">No agents currently active.</p>
         )}
+        <StateDonut stateCounts={stateCounts} />
       </div>
     </div>
   );
