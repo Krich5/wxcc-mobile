@@ -37,54 +37,71 @@ function orgId() {
   return id;
 }
 
-async function findUserByEmail(session, email) {
-  // List Users config API (developer.webex.com/webex-contact-center -- GET
-  // /organization/{orgid}/v2/user, cjp:config_read). Used instead of the generic Webex
-  // people/me endpoint since this Integration has no spark:* scopes.
-  const data = await authedFetch(
-    session,
-    `/organization/${orgId()}/v2/user?filter=${encodeURIComponent(`email==${email}`)}`
-  );
-  return data?.data?.[0] || null;
+function decodeSparkId(encoded) {
+  // Webex "Cisco Spark" IDs are base64 of a URN like "ciscospark://us/PEOPLE/<uuid>" --
+  // the UUID is the last path segment.
+  const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+  return decoded.split('/').pop();
 }
 
-export async function listTeams(session, email) {
-  // Confirmed against developer.webex.com/webex-contact-center/docs/api/v1/team/list-teams
-  // (GET /organization/{orgid}/v2/team, filterable by userId). Without email we can't
-  // resolve which WxCC user the agent is (no spark:* scope for the generic people/me
-  // lookup), so we fall back to listing every team in the org.
-  if (email) {
-    const user = await findUserByEmail(session, email);
-    if (user?.id) {
+async function webexPeopleMe(session) {
+  if (!session.tokens?.access_token) {
+    throw new Error('Not connected to Webex Contact Center (no access token) - use /api/auth/login first');
+  }
+  const res = await fetch('https://webexapis.com/v1/people/me', {
+    headers: { Authorization: `Bearer ${session.tokens.access_token}` },
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`Webex people/me failed: ${res.status} ${text}`);
+  }
+  return text ? JSON.parse(text) : null;
+}
+
+async function resolveAgentContext(session) {
+  // Confirmed pipeline: GET https://webexapis.com/v1/people/me -> decode its base64 id
+  // to get the CI user ID -> GET /organization/{orgid}/v2/user/by-ci-user-id/{ciUserId}
+  // for the WxCC user record (id = agentId used by the state-change PUT, agentProfileId
+  // for idle/wrap-up codes, teamIds for the team picker).
+  if (session.agentContext) return session.agentContext;
+  const me = await webexPeopleMe(session);
+  const ciUserId = decodeSparkId(me.id);
+  const user = await authedFetch(session, `/organization/${orgId()}/v2/user/by-ci-user-id/${ciUserId}`);
+  if (!user?.id) throw new Error('No WxCC user found for your Webex account');
+  session.agentContext = {
+    agentId: user.id,
+    agentProfileId: user.agentProfileId,
+    teamIds: user.teamIds || [],
+  };
+  return session.agentContext;
+}
+
+export async function listTeams(session) {
+  // Lists only the teams the signed-in agent can log into, via resolveAgentContext()'s
+  // teamIds. Falls back to every team in the org if identity resolution fails.
+  try {
+    const ctx = await resolveAgentContext(session);
+    if (ctx.teamIds?.length) {
       const data = await authedFetch(
         session,
-        `/organization/${orgId()}/v2/team?filter=${encodeURIComponent(`userId==${user.id}`)}`
+        `/organization/${orgId()}/v2/team?filter=${encodeURIComponent(
+          `id=in=(${ctx.teamIds.map((id) => `"${id}"`).join(',')})`
+        )}`
       );
       return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
     }
+  } catch {
+    // fall through to the org-wide list below
   }
   const data = await authedFetch(session, `/organization/${orgId()}/v2/team`);
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
-async function resolveAgentContext(session, email) {
-  // agentId (used by the state-change PUT) and agentProfileId (used to look up idle/
-  // wrap-up codes) both come off the WxCC "user" record for the signed-in agent's
-  // email -- TODO verify the agentProfileId field name against your org's actual
-  // /v2/user response shape.
-  if (session.agentContext) return session.agentContext;
-  if (!email) throw new Error('Missing your email -- sign in again and enter it on the team screen');
-  const user = await findUserByEmail(session, email);
-  if (!user?.id) throw new Error(`No WxCC user found for ${email}`);
-  session.agentContext = { agentId: user.id, agentProfileId: user.agentProfileId };
-  return session.agentContext;
-}
-
 async function loadAgentProfile(session) {
   if (session.agentProfileData) return session.agentProfileData;
-  const ctx = session.agentContext;
+  const ctx = await resolveAgentContext(session);
   if (!ctx?.agentProfileId) {
-    throw new Error('Agent profile not resolved yet -- sign in with your email on the team screen');
+    throw new Error('No agent profile found for your account');
   }
   // Confirmed against this org's own curl example: GET
   // /organization/{orgid}/agent-profile/{agentProfileId} -> { idleCodes: [ids],
@@ -120,7 +137,7 @@ export async function getWrapUpCodes(session) {
   return resolveCodeNames(session, profile?.wrapUpCodes);
 }
 
-export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION', email }) {
+export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSION' }) {
   // Confirmed against this org's own Postman/curl example: POST /v2/agents/login
   // (not /v1), body is exactly {dialNumber, teamId, roles, deviceType} -- no
   // isExtension field, and deviceType is "EXTENSION" rather than "BROWSER".
@@ -130,11 +147,9 @@ export async function login(session, { dialNumber, teamId, deviceType = 'EXTENSI
   });
   session.agentState = 'Available';
   session.profile = { ...(data?.agent || {}), teamId, dialNumber };
-  if (email) {
-    // Non-fatal: the agent is already logged in on WxCC's side even if this fails --
-    // it just means status/wrap-up codes won't be available until it's resolved.
-    await resolveAgentContext(session, email).catch(() => {});
-  }
+  // Non-fatal: the agent is already logged in on WxCC's side even if this fails --
+  // it just means status/wrap-up codes won't be available until it's resolved.
+  await resolveAgentContext(session).catch(() => {});
   return data;
 }
 
@@ -159,10 +174,7 @@ export async function setState(session, state, { auxCodeId, reason } = {}) {
   // Confirmed against this org's own curl example: PUT /v2/agents/session/state with
   // {channelType, state, agentId, auxCodeId, reason} -- auxCodeId/reason are only sent
   // for non-Available states.
-  const ctx = session.agentContext;
-  if (!ctx?.agentId) {
-    throw new Error('Agent context not resolved yet -- sign in with your email on the team screen');
-  }
+  const ctx = await resolveAgentContext(session);
   const body = { channelType: ['telephony'], state, agentId: ctx.agentId };
   if (state !== 'Available') {
     body.auxCodeId = auxCodeId;

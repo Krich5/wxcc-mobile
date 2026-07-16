@@ -9,13 +9,13 @@ function providerFor(session) {
 }
 
 router.post('/login', async (req, res) => {
-  const { mode = 'mock', name, dialNumber, teamId, email } = req.body || {};
+  const { mode = 'mock', name, dialNumber, teamId } = req.body || {};
   req.session.mode = mode;
   try {
     const provider = providerFor(req.session);
     const data =
       mode === 'live'
-        ? await provider.login(req.session, { dialNumber, teamId, email })
+        ? await provider.login(req.session, { dialNumber, teamId })
         : provider.login(req.session, { name });
     let notificationsError = null;
     if (mode === 'live') {
@@ -72,7 +72,7 @@ router.get('/teams', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Team lookup is only available in live mode' });
   }
   try {
-    const teams = await live.listTeams(req.session, req.query.email);
+    const teams = await live.listTeams(req.session);
     res.json({ ok: true, teams });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
