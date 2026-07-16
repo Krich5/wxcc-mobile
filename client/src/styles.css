@@ -92,6 +92,29 @@ input {
   color: var(--text);
 }
 
+.inline-field {
+  display: flex;
+  gap: 8px;
+}
+
+.inline-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.inline-field button.secondary {
+  width: auto;
+  max-width: none;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+
+.hint-inline {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 0.8em;
+}
+
 button.primary,
 button.secondary {
   width: 100%;

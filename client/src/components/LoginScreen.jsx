@@ -34,24 +34,39 @@ function ModeChoice() {
 
 function LiveAgentLoginForm() {
   const { refresh } = useSession();
+  const [email, setEmail] = useState('');
   const [teams, setTeams] = useState(null); // null = loading, [] = failed/empty (fall back to free text)
   const [teamsError, setTeamsError] = useState(null);
+  const [scopedToEmail, setScopedToEmail] = useState(false);
   const [teamId, setTeamId] = useState('');
   const [dialNumber, setDialNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    api('/api/agent/teams')
+  const loadTeams = (forEmail) => {
+    const qs = forEmail ? `?email=${encodeURIComponent(forEmail)}` : '';
+    api(`/api/agent/teams${qs}`)
       .then(({ teams: list }) => {
         setTeams(list);
+        setScopedToEmail(Boolean(forEmail));
         if (list[0]) setTeamId(list[0].id);
       })
       .catch((err) => {
         setTeamsError(err.message);
         setTeams([]);
       });
+  };
+
+  useEffect(() => {
+    loadTeams();
   }, []);
+
+  const findMyTeams = () => {
+    if (!email) return;
+    setTeamsError(null);
+    setTeams(null);
+    loadTeams(email);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -83,7 +98,22 @@ function LiveAgentLoginForm() {
       </p>
 
       <label className="field">
-        Team
+        Your Webex email (optional, narrows the team list to yours)
+        <div className="inline-field">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@company.com"
+          />
+          <button type="button" className="secondary" onClick={findMyTeams}>
+            Find my teams
+          </button>
+        </div>
+      </label>
+
+      <label className="field">
+        Team {scopedToEmail && <span className="hint-inline">(filtered to {email})</span>}
         {teams === null ? (
           <input value="Loading your teams…" disabled />
         ) : teams.length > 0 ? (

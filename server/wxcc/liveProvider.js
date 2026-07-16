@@ -31,16 +31,39 @@ async function authedFetch(session, path, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-export async function listTeams(session) {
+function orgId() {
+  const id = process.env.WXCC_ORG_ID;
+  if (!id) throw new Error('WXCC_ORG_ID is not configured');
+  return id;
+}
+
+async function findUserByEmail(session, email) {
+  // List Users config API (developer.webex.com/webex-contact-center -- GET
+  // /organization/{orgid}/v2/user, cjp:config_read). Used instead of the generic Webex
+  // people/me endpoint since this Integration has no spark:* scopes.
+  const data = await authedFetch(
+    session,
+    `/organization/${orgId()}/v2/user?filter=${encodeURIComponent(`email==${email}`)}`
+  );
+  return data?.data?.[0] || null;
+}
+
+export async function listTeams(session, email) {
   // Confirmed against developer.webex.com/webex-contact-center/docs/api/v1/team/list-teams
-  // (GET /organization/{orgid}/v2/team). Some WxCC-only Integrations (created with just
-  // cjp:*/cjds:*/analytics:* scopes, no spark:*) can't call the generic Webex people/me
-  // endpoint to resolve orgId, so this takes the org ID from config instead of trying to
-  // filter by the signed-in user -- it lists every team in the org rather than just the
-  // agent's own teams.
-  const orgId = process.env.WXCC_ORG_ID;
-  if (!orgId) throw new Error('WXCC_ORG_ID is not configured');
-  const data = await authedFetch(session, `/organization/${orgId}/v2/team`);
+  // (GET /organization/{orgid}/v2/team, filterable by userId). Without email we can't
+  // resolve which WxCC user the agent is (no spark:* scope for the generic people/me
+  // lookup), so we fall back to listing every team in the org.
+  if (email) {
+    const user = await findUserByEmail(session, email);
+    if (user?.id) {
+      const data = await authedFetch(
+        session,
+        `/organization/${orgId()}/v2/team?filter=${encodeURIComponent(`userId==${user.id}`)}`
+      );
+      return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
+    }
+  }
+  const data = await authedFetch(session, `/organization/${orgId()}/v2/team`);
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
 }
 
