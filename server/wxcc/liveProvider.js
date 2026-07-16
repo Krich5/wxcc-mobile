@@ -148,6 +148,25 @@ async function resolveCodeNames(session, ids) {
   return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
 }
 
+export async function getQueues(session) {
+  // GET /organization/{orgid}/v3/contact-service-queue (v3, unlike team/user/
+  // auxiliary-code which are v2) filtered to the queue IDs on the agent's desktop
+  // profile. The OrgId header (alongside the usual Bearer token) is confirmed from
+  // another in-house WxCC dashboard project that calls this same endpoint.
+  const profile = await loadAgentProfile(session);
+  const queueIds = profile?.queues || [];
+  if (!queueIds.length) return [];
+  const ctx = await resolveAgentContext(session);
+  const data = await authedFetch(
+    session,
+    `/organization/${ctx.orgId}/v3/contact-service-queue?filter=${encodeURIComponent(
+      `id=in=(${queueIds.map((id) => `"${id}"`).join(',')})`
+    )}`,
+    { headers: { OrgId: ctx.orgId } }
+  );
+  return (data?.data || []).map((q) => ({ id: q.id, name: q.name || q.customName || q.id }));
+}
+
 export async function getIdleCodes(session) {
   const profile = await loadAgentProfile(session);
   return resolveCodeNames(session, profile?.idleCodes);

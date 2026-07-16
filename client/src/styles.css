@@ -219,6 +219,38 @@ button.primary:disabled {
   color: var(--danger);
 }
 
+.queue-list {
+  width: 100%;
+  max-width: 320px;
+  background: var(--bg-elevated);
+  border: 1px solid #263457;
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.queue-list-title {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.queue-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.queue-list li {
+  font-size: 0.9rem;
+}
+
 button.link {
   background: none;
   color: var(--text-dim);

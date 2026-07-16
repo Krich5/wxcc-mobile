@@ -100,6 +100,16 @@ router.get('/teams', async (req, res) => {
   }
 });
 
+router.get('/queues', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, queues: [] });
+  try {
+    const queues = await live.getQueues(req.session);
+    res.json({ ok: true, queues });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/idle-codes', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, codes: [] });
   try {

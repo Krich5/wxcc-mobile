@@ -5,6 +5,7 @@ import { PresenceBar } from './components/PresenceBar.jsx';
 import { IncomingTaskModal } from './components/IncomingTaskModal.jsx';
 import { CallScreen } from './components/CallScreen.jsx';
 import { WrapUpModal } from './components/WrapUpModal.jsx';
+import { QueueList } from './components/QueueList.jsx';
 import { enableNotifications, hasExistingSubscription } from './lib/push.js';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
         {!task && (
           <div className="idle-panel">
             <p>Waiting for a task…</p>
+            <QueueList />
             {!notificationsEnabled && (
               <button className="secondary" onClick={requestNotifications}>
                 Enable notifications
