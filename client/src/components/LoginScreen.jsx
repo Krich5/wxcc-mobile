@@ -34,39 +34,24 @@ function ModeChoice() {
 
 function LiveAgentLoginForm() {
   const { refresh, setNotice } = useSession();
-  const [email, setEmail] = useState('');
   const [teams, setTeams] = useState(null); // null = loading, [] = failed/empty (fall back to free text)
   const [teamsError, setTeamsError] = useState(null);
-  const [scopedToEmail, setScopedToEmail] = useState(false);
   const [teamId, setTeamId] = useState('');
   const [dialNumber, setDialNumber] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
-  const loadTeams = (forEmail) => {
-    const qs = forEmail ? `?email=${encodeURIComponent(forEmail)}` : '';
-    api(`/api/agent/teams${qs}`)
+  useEffect(() => {
+    api('/api/agent/teams')
       .then(({ teams: list }) => {
         setTeams(list);
-        setScopedToEmail(Boolean(forEmail));
         if (list[0]) setTeamId(list[0].id);
       })
       .catch((err) => {
         setTeamsError(err.message);
         setTeams([]);
       });
-  };
-
-  useEffect(() => {
-    loadTeams();
   }, []);
-
-  const findMyTeams = () => {
-    if (!email) return;
-    setTeamsError(null);
-    setTeams(null);
-    loadTeams(email);
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -75,7 +60,7 @@ function LiveAgentLoginForm() {
     try {
       const result = await api('/api/agent/login', {
         method: 'POST',
-        body: JSON.stringify({ mode: 'live', teamId, dialNumber, email }),
+        body: JSON.stringify({ mode: 'live', teamId, dialNumber }),
       });
       if (result.notificationsError) {
         setNotice(
@@ -103,23 +88,7 @@ function LiveAgentLoginForm() {
       </p>
 
       <label className="field">
-        Your Webex email (needed for status/wrap-up codes, and narrows the team list to yours)
-        <div className="inline-field">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@company.com"
-            required
-          />
-          <button type="button" className="secondary" onClick={findMyTeams}>
-            Find my teams
-          </button>
-        </div>
-      </label>
-
-      <label className="field">
-        Team {scopedToEmail && <span className="hint-inline">(filtered to {email})</span>}
+        Team
         {teams === null ? (
           <input value="Loading your teams…" disabled />
         ) : teams.length > 0 ? (
