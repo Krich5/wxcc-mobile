@@ -24,10 +24,10 @@ export function ActiveCall({ call }) {
 
   return (
     <div className="active-call-card">
-      <p className="active-call-label">Active call</p>
+      <p className="active-call-label">{call.statusLabel}</p>
       <p className="active-call-number">{call.customerPhone || call.origin || 'Unknown caller'}</p>
       <p className="active-call-meta">
-        {call.status} · {formatElapsed(elapsedSec)}
+        {call.statusLabel} · {formatElapsed(elapsedSec)}
         {call.team ? ` · ${call.team}` : ''}
       </p>
     </div>

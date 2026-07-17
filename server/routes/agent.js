@@ -208,8 +208,18 @@ router.post('/tasks/:id/end', async (req, res) => {
 router.post('/tasks/:id/wrapup', async (req, res) => {
   const { auxCodeId, wrapUpReason } = req.body || {};
   try {
-    const data = await providerFor(req.session).wrapupTask(req.session, req.params.id, { auxCodeId, wrapUpReason });
-    res.json({ ok: true, ...data });
+    const provider = providerFor(req.session);
+    const data = await provider.wrapupTask(req.session, req.params.id, { auxCodeId, wrapUpReason });
+    // Real WxCC behavior: the agent should be ready for the next call right after
+    // wrap-up, not left in whatever idle/wrap-up state they were in before the call --
+    // non-fatal if this fails, wrap-up itself already succeeded.
+    let presenceError = null;
+    try {
+      await provider.setState(req.session, 'Available');
+    } catch (err) {
+      presenceError = err.message;
+    }
+    res.json({ ok: true, ...data, presenceError });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });
   }

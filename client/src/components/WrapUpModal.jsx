@@ -9,7 +9,7 @@ const FALLBACK_CODES = ['Resolved', 'Follow-up needed', 'Transferred', 'No resol
 }));
 
 export function WrapUpModal({ task, onDone }) {
-  const { session, setSession } = useSession();
+  const { session, setSession, setNotice } = useSession();
   const [codes, setCodes] = useState(session.mode === 'live' ? null : FALLBACK_CODES);
   const [codeId, setCodeId] = useState(session.mode === 'live' ? '' : FALLBACK_CODES[0].id);
   const [autoWrapAfterMs, setAutoWrapAfterMs] = useState(0);
@@ -17,6 +17,10 @@ export function WrapUpModal({ task, onDone }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const submittedRef = useRef(false);
+  // Guards the auto-wrap-up timer so it's armed exactly once per modal instance -- if
+  // codes/autoWrapAfterMs were ever re-set (e.g. a re-fetch), we don't want to
+  // accidentally restart or shorten an already-running countdown.
+  const autoWrapArmedRef = useRef(false);
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -42,11 +46,16 @@ export function WrapUpModal({ task, onDone }) {
     setBusy(true);
     setError(null);
     try {
-      await api(`/api/agent/tasks/${task.id}/wrapup`, {
+      const result = await api(`/api/agent/tasks/${task.id}/wrapup`, {
         method: 'POST',
         body: JSON.stringify({ auxCodeId: id, wrapUpReason: reason }),
       });
-      setSession((s) => ({ ...s, currentTask: null }));
+      if (result.presenceError) {
+        setNotice(`Wrap-up submitted, but couldn't set you back to Available: ${result.presenceError}`);
+      }
+      // The server already moves the agent back to Available after wrap-up -- reflect
+      // that immediately instead of waiting for the next dashboard poll.
+      setSession((s) => ({ ...s, currentTask: null, agentState: 'Available' }));
       onDone?.();
     } catch (err) {
       submittedRef.current = false;
@@ -58,17 +67,26 @@ export function WrapUpModal({ task, onDone }) {
 
   // Auto wrap-up: agent-profile.autoWrapAfterSeconds (already in ms despite the name) --
   // if configured, submit the default wrap-up code automatically once that much time has
-  // passed rather than waiting indefinitely for the agent to pick one.
+  // passed rather than waiting indefinitely for the agent to pick one. Armed exactly
+  // once (autoWrapArmedRef) so this can't be restarted/shortened by a later re-render.
   useEffect(() => {
+    if (autoWrapArmedRef.current) return;
     if (!autoWrapAfterMs || !codes) return;
     const defaultCode = codes.find((c) => c.defaultCode);
     if (!defaultCode) return;
+    autoWrapArmedRef.current = true;
     const startedAt = Date.now();
+    // eslint-disable-next-line no-console
+    console.log(`[wrapup] auto-wrap-up armed for ${autoWrapAfterMs}ms, default code "${defaultCode.name}"`);
     setAutoRemainingMs(autoWrapAfterMs);
     const tick = setInterval(() => {
       setAutoRemainingMs(Math.max(0, autoWrapAfterMs - (Date.now() - startedAt)));
     }, 1000);
-    const timeout = setTimeout(() => submit(defaultCode.id, defaultCode.name), autoWrapAfterMs);
+    const timeout = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.log(`[wrapup] auto-wrap-up firing after ${Date.now() - startedAt}ms (armed for ${autoWrapAfterMs}ms)`);
+      submit(defaultCode.id, defaultCode.name);
+    }, autoWrapAfterMs);
     return () => {
       clearInterval(tick);
       clearTimeout(timeout);

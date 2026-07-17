@@ -187,8 +187,12 @@ export async function getWrapUpSettings(session) {
   const profile = await loadAgentProfile(session);
   // Confirmed: agent-profile.autoWrapAfterSeconds is actually in MILLISECONDS despite
   // its name -- use it directly as a setTimeout duration. 0/missing means auto-wrap-up
-  // isn't configured for this profile.
-  return { autoWrapAfterMs: Number(profile?.autoWrapAfterSeconds) || 0 };
+  // isn't configured for this profile. Logged raw so a reported mismatch (e.g. firing
+  // faster than this value implies) can be cross-checked against what the client logs.
+  const raw = profile?.autoWrapAfterSeconds;
+  const autoWrapAfterMs = Number(raw) || 0;
+  console.log(`[wrapup] agent-profile.autoWrapAfterSeconds raw=${JSON.stringify(raw)} -> autoWrapAfterMs=${autoWrapAfterMs}`);
+  return { autoWrapAfterMs };
 }
 
 export async function login(session, { dialNumber, teamId, teamName, deviceType = 'EXTENSION' }) {

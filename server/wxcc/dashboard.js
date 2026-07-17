@@ -255,6 +255,16 @@ export async function checkExistingSession(session) {
   };
 }
 
+function getCallStatusLabel(rawStatus) {
+  // Confirmed: taskDetails.status is "connect" while the call is still ringing/alerting
+  // (before the agent answers) and "connected" once actually talking -- neither is the
+  // agent-facing word we want, so map both to what the agent should see.
+  const s = (rawStatus || '').toLowerCase();
+  if (s === 'connect') return 'Ringing';
+  if (s === 'connected' || s === 'talking') return 'Engaged';
+  return rawStatus || 'Active';
+}
+
 export async function getActiveCall(session) {
   const ctx = await resolveAgentContext(session);
   const now = Date.now();
@@ -268,6 +278,7 @@ export async function getActiveCall(session) {
   return {
     id: active.id,
     status: active.status,
+    statusLabel: getCallStatusLabel(active.status),
     direction: active.direction,
     origin: active.origin,
     destination: active.destination,

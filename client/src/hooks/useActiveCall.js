@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 
-const POLL_MS = 4000;
+const POLL_MS = 2000;
 
 // Single poll of /api/agent/active-call shared by the ActiveCall display and the
 // wrap-up flow -- the websocket notification path never fires (subscribe never
