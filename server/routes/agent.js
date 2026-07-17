@@ -1,7 +1,7 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
-import { getDashboard, getActiveCall, getCallHistory, checkExistingSession, getConsultableAgents } from '../wxcc/dashboard.js';
+import { getDashboard, getActiveCall, getCallHistory, checkExistingSession } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 import { revokeWebexTokens } from './auth.js';
 
@@ -108,11 +108,14 @@ router.get('/call-log', async (req, res) => {
   }
 });
 
-router.get('/consult-agents', async (req, res) => {
+router.post('/consult-agents', async (req, res) => {
+  // POST (not GET) since this triggers a real, non-idempotent WxCC request
+  // (/v1/agents/buddyList) each time -- not just reading cached data.
   if (req.session.mode !== 'live') return res.json({ ok: true, agents: [] });
+  const { state } = req.body || {};
   try {
-    const agents = await getConsultableAgents(req.session);
-    res.json({ ok: true, agents });
+    const result = await live.getBuddyAgents(req.session, { state });
+    res.json({ ok: true, ...result });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

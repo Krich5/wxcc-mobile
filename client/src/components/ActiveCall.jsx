@@ -137,7 +137,10 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
   const selectAgentType = () => {
     setDestType('agent');
     if (agents === null && !agentsError) {
-      api('/api/agent/consult-agents')
+      // No state filter -- fetch both Available and Idle once; which ones are
+      // selectable depends on whether this is a consult (either) or a transfer
+      // (Available only), applied client-side in visibleAgents below.
+      api('/api/agent/consult-agents', { method: 'POST', body: JSON.stringify({}) })
         .then(({ agents: list }) => setAgents(list || []))
         .catch((err) => {
           setAgentsError(err.message);
@@ -145,6 +148,11 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
         });
     }
   };
+
+  const isAgentAvailable = (a) => a.state?.toLowerCase() === 'available';
+  // Consulting an idle agent is supported; transferring is not -- restrict the picker
+  // accordingly rather than let the agent pick a target that's guaranteed to fail.
+  const visibleAgents = (agents || []).filter((a) => pendingAction === 'consult' || isAgentAvailable(a));
 
   const submitPendingAction = async () => {
     const to = destType === 'agent' ? agentId : destNumber.trim();
@@ -295,64 +303,84 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                 </button>
               </div>
 
-              <div className="active-call-dest-row">
-                {destType === 'dialNumber' ? (
-                  <input
-                    type="tel"
-                    placeholder="Search address book or enter a number"
-                    value={destNumber}
-                    onChange={(e) => setDestNumber(e.target.value)}
-                    autoFocus
-                  />
-                ) : (
-                  <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-                    <option value="">
-                      {agentsError
-                        ? "Couldn't load agents"
-                        : agents === null
-                          ? 'Loading agents…'
-                          : agents.length
-                            ? 'Choose an agent'
-                            : 'No agents available'}
-                    </option>
-                    {(agents || []).map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <button
-                  className="primary"
-                  onClick={submitPendingAction}
-                  disabled={busy || !(destType === 'agent' ? agentId : destNumber.trim())}
-                >
-                  {pendingAction === 'consult' ? 'Consult' : 'Transfer'}
-                </button>
-                <button
-                  className="secondary"
-                  onClick={() => {
-                    setPendingAction(null);
-                    setDestType('dialNumber');
-                    setDestNumber('');
-                    setAgentId('');
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-              {addressBookMatches.length > 0 && (
-                <ul className="address-book-suggestions">
-                  {addressBookMatches.map((e) => (
-                    <li key={e.id} onClick={() => setDestNumber(e.number)}>
-                      <span className="address-book-name">{e.name}</span>
-                      <span className="address-book-number">{e.number}</span>
-                    </li>
-                  ))}
-                </ul>
+              {destType === 'dialNumber' ? (
+                <>
+                  <div className="active-call-dest-row">
+                    <input
+                      type="tel"
+                      placeholder="Search address book or enter a number"
+                      value={destNumber}
+                      onChange={(e) => setDestNumber(e.target.value)}
+                      autoFocus
+                    />
+                    <button className="primary" onClick={submitPendingAction} disabled={busy || !destNumber.trim()}>
+                      {pendingAction === 'consult' ? 'Consult' : 'Transfer'}
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setPendingAction(null);
+                        setDestType('dialNumber');
+                        setDestNumber('');
+                        setAgentId('');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {addressBookMatches.length > 0 && (
+                    <ul className="address-book-suggestions">
+                      {addressBookMatches.map((e) => (
+                        <li key={e.id} onClick={() => setDestNumber(e.number)}>
+                          <span className="address-book-name">{e.name}</span>
+                          <span className="address-book-number">{e.number}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {addressBookError && <p className="error">{addressBookError}</p>}
+                </>
+              ) : (
+                <>
+                  {agentsError && <p className="error">{agentsError}</p>}
+                  {!agentsError && agents === null && <p className="hint">Loading agents…</p>}
+                  {!agentsError && agents !== null && visibleAgents.length === 0 && (
+                    <p className="hint">
+                      {pendingAction === 'transfer' ? 'No agents are Available right now.' : 'No agents found.'}
+                    </p>
+                  )}
+                  {visibleAgents.length > 0 && (
+                    <ul className="agent-picker-list">
+                      {visibleAgents.map((a) => (
+                        <li
+                          key={a.id}
+                          className={agentId === a.id ? 'active' : ''}
+                          onClick={() => setAgentId(a.id)}
+                        >
+                          <span className={`agent-dot ${isAgentAvailable(a) ? 'is-available' : 'is-idle'}`} />
+                          <span className="agent-picker-name">{a.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="active-call-dest-row">
+                    <button className="primary" onClick={submitPendingAction} disabled={busy || !agentId}>
+                      {pendingAction === 'consult' ? 'Consult' : 'Transfer'}
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setPendingAction(null);
+                        setDestType('dialNumber');
+                        setDestNumber('');
+                        setAgentId('');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
               )}
-              {agentsError && <p className="error">{agentsError}</p>}
-              {addressBookError && <p className="error">{addressBookError}</p>}
             </div>
           )}
         </>

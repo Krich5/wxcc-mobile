@@ -159,38 +159,79 @@ async function resolveCodeNames(session, ids) {
   return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
 }
 
-export async function resolveCiUserIds(session, wxccUserIds) {
-  // UNCONFIRMED -- best-effort fix for a real bug: /consult and /transfer with
-  // destinationType: "agent" reject WxCC's own "Contact Center User Id" (what
-  // agent-profile.userIds and the agentSession search API's agentId both return) with
-  // "The destination agent ID is invalid." Control Hub shows a distinct "Cisco User Id"
-  // on the same user record, which is apparently what's actually required. This mirrors
-  // the id=in=(...) filter pattern already confirmed working for /v2/team and
-  // /v2/auxiliary-code, applied to /v2/user instead -- neither the endpoint nor the
-  // response field name for the Cisco User Id has been confirmed, so the raw response is
-  // logged unconditionally to nail down the real shape from Railway logs on next use.
-  // Falls back to an empty map (callers fall back to the known-broken id) if the
-  // endpoint doesn't exist or the field-name guesses below don't match.
-  if (!wxccUserIds?.length) return new Map();
+export async function getBuddyAgents(session, { state } = {}) {
+  // Confirmed via curl: POST /v1/agents/buddyList with {agentProfileId, mediaType,
+  // state?} -- state is "Available" or "Idle"; omitting it returns both (useful for
+  // consult, which can target an idle agent; transfer should be restricted to Available
+  // only on the client). This is the correct, purpose-built replacement for the earlier
+  // agentSession-based approach, which returned WxCC's "Contact Center User Id" --
+  // rejected by /consult and /transfer with "the destination agent ID is invalid" -- and
+  // for the /v2/user reverse-lookup attempt, which 403'd (this agent has no admin-level
+  // {user} permission).
+  //
+  // The HTTP response is just a 202 acknowledgment ("request accepted for processing"),
+  // NOT the agent list -- confirmed the real data arrives asynchronously over the
+  // notification WebSocket subscribeNotifications() already opens. Neither that
+  // message's event-type field nor its agent-list shape is confirmed yet, so this waits
+  // for the next non-keepalive/non-Welcome message after the POST and best-effort-parses
+  // it, logging the raw payload unconditionally so the real shape can be nailed down
+  // from Railway logs on first use. Note: if some OTHER notification (e.g. a live call's
+  // own state change) happens to land in that same window, this could misattribute it --
+  // acceptable for now since the raw log makes that obvious to spot and fix.
   const ctx = await resolveAgentContext(session);
-  try {
-    const data = await authedFetch(
-      session,
-      `/organization/${ctx.orgId}/v2/user?filter=${encodeURIComponent(
-        `id=in=(${wxccUserIds.map((id) => `"${id}"`).join(',')})`
-      )}`
-    );
-    console.log('[consult] /v2/user?filter=id=in=(...) raw response:', JSON.stringify(data));
-    const map = new Map();
-    (data?.data || []).forEach((u) => {
-      const ciUserId = u.ciUserId || u.ciId || u.cIUserId || u.personId || u.webexUserId || u.webexId || null;
-      if (u.id && ciUserId) map.set(u.id, ciUserId);
-    });
-    return map;
-  } catch (err) {
-    console.log('[consult] /v2/user lookup failed (falling back to Contact Center User Id):', err.message);
-    return new Map();
+  if (!ctx?.agentProfileId) throw new Error('No agent profile found for your account');
+  if (!session.tokens?.access_token) {
+    throw new Error('Not connected to Webex Contact Center (no access token) - use /api/auth/login first');
   }
+  if (!session.liveSocket || session.liveSocket.readyState !== WebSocket.OPEN) {
+    throw new Error('Notification socket is not connected -- cannot receive the buddy list response');
+  }
+
+  const waitForResponse = new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      session.emitter.off('raw-notification', onMessage);
+      reject(new Error('Timed out waiting for the buddy agents response'));
+    }, 8000);
+    const onMessage = (msg) => {
+      if (!msg || msg.keepalive || msg.type === 'Welcome') return;
+      clearTimeout(timeout);
+      session.emitter.off('raw-notification', onMessage);
+      resolve(msg);
+    };
+    session.emitter.on('raw-notification', onMessage);
+  });
+
+  const res = await fetch(`${baseUrl()}/v1/agents/buddyList`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session.tokens.access_token}`,
+    },
+    body: JSON.stringify({
+      agentProfileId: ctx.agentProfileId,
+      mediaType: 'telephony',
+      ...(state ? { state } : {}),
+    }),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    throw new Error(`WxCC API /v1/agents/buddyList failed: ${res.status} ${text}`);
+  }
+  console.log('[buddyList] POST accepted:', text);
+
+  const raw = await waitForResponse;
+  console.log('[buddyList] async response received:', JSON.stringify(raw));
+
+  const list = raw?.data?.agents || raw?.data?.buddyAgents || raw?.agents || raw?.buddyAgents || raw?.data || [];
+  const agents = (Array.isArray(list) ? list : [])
+    .map((a) => ({
+      id: a.agentId || a.id || a.userId || null,
+      name: a.agentName || a.name || a.displayName || a.id || 'Unknown',
+      state: (a.state || a.agentState || '').toString(),
+    }))
+    .filter((a) => a.id);
+
+  return { agents, raw };
 }
 
 export async function getIdleCodes(session) {

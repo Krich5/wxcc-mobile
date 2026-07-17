@@ -547,6 +547,59 @@ button.primary:disabled {
   flex-shrink: 0;
 }
 
+.agent-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #263457;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.agent-picker-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #1b2740;
+}
+
+.agent-picker-list li:last-child {
+  border-bottom: none;
+}
+
+.agent-picker-list li:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.agent-picker-list li.active {
+  background: rgba(0, 87, 216, 0.15);
+}
+
+.agent-picker-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.agent-dot.is-available {
+  background: var(--success);
+}
+
+.agent-dot.is-idle {
+  background: var(--text-dim);
+}
+
 .dashboard {
   width: 100%;
   padding: 16px;
