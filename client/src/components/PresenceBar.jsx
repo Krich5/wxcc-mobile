@@ -50,7 +50,10 @@ export function PresenceBar({
       const next = `Idle: ${label}`;
       setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
     }
-  }, [self, setSession]);
+    // Deliberately keyed on the state fields, not the `self` object reference: resetSelfDuration()
+    // replaces `self` with a new object that only zeroes durationSec, which would otherwise re-run
+    // this effect against the still-stale state and stomp the optimistic update in applyState().
+  }, [self?.state, self?.idleCode, self?.stateLabel, setSession]);
 
   useEffect(() => {
     const tick = setInterval(() => forceTick((n) => n + 1), 1000);
