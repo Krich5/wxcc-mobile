@@ -19,6 +19,7 @@ export function PresenceBar({
   fetchedAtMs,
   reloadSelf,
   resetSelfDuration,
+  onPresenceChanged,
   notificationsEnabled,
   onRequestNotifications,
 }) {
@@ -74,7 +75,10 @@ export function PresenceBar({
         // short delay avoids racing that lag while still confirming much sooner than the
         // full poll interval.
         resetSelfDuration?.();
-        setTimeout(() => reloadSelf?.(), 3000);
+        setTimeout(() => {
+          reloadSelf?.();
+          onPresenceChanged?.();
+        }, 3000);
       } catch (err) {
         setNotice(err.message);
       }
@@ -89,7 +93,10 @@ export function PresenceBar({
       });
       setSession((s) => ({ ...s, agentState: `Idle: ${code.name}` }));
       resetSelfDuration?.();
-      setTimeout(() => reloadSelf?.(), 3000);
+      setTimeout(() => {
+        reloadSelf?.();
+        onPresenceChanged?.();
+      }, 3000);
     } catch (err) {
       setNotice(err.message);
     }

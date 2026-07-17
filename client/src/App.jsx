@@ -16,6 +16,7 @@ export default function App() {
   const { session, loading, notice, setNotice } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [callLogOpen, setCallLogOpen] = useState(false);
+  const [dashboardRefreshSignal, setDashboardRefreshSignal] = useState(0);
   const { call, endedTaskId, clearEnded, markEnded, refresh: refreshActiveCall } = useActiveCall(session.mode);
   const { self, fetchedAtMs, reload: reloadSelf, resetDuration: resetSelfDuration } = useSelfStatus(session.mode);
 
@@ -48,6 +49,7 @@ export default function App() {
         fetchedAtMs={fetchedAtMs}
         reloadSelf={reloadSelf}
         resetSelfDuration={resetSelfDuration}
+        onPresenceChanged={() => setDashboardRefreshSignal((n) => n + 1)}
         notificationsEnabled={notificationsEnabled}
         onRequestNotifications={requestNotifications}
       />
@@ -60,7 +62,7 @@ export default function App() {
           fetchedAtMs={fetchedAtMs}
         />
         {!task && callLogOpen && <CallLog onClose={() => setCallLogOpen(false)} />}
-        {!task && !callLogOpen && <Dashboard />}
+        {!task && !callLogOpen && <Dashboard refreshSignal={dashboardRefreshSignal} />}
         {task?.status === 'connected' && <CallScreen task={task} />}
         {task?.status === 'wrapup' && <WrapUpModal task={task} />}
       </main>

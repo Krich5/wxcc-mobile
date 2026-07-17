@@ -57,7 +57,7 @@ function StateDonut({ stateCounts }) {
   );
 }
 
-export function Dashboard() {
+export function Dashboard({ refreshSignal }) {
   const { session } = useSession();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -82,7 +82,11 @@ export function Dashboard() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [session.mode]);
+    // refreshSignal isn't read here -- it's a bump-only counter from a presence change so
+    // this roster poll and the header pill's own poll land close together instead of
+    // drifting on two fully independent 15s cycles.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.mode, refreshSignal]);
 
   if (session.mode !== 'live') return null;
   if (error) return <p className="hint">Couldn't load the dashboard: {error}</p>;
