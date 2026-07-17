@@ -145,6 +145,16 @@ router.get('/existing-session', async (req, res) => {
     } else {
       req.session.agentState = existing.stateLabel;
     }
+    // This path is exactly when the socket is most likely missing (a server restart
+    // wiped session.liveSocket, which is why session.profile needed re-detecting here in
+    // the first place) -- re-establish it now rather than waiting for something that
+    // needs it (e.g. the buddy-list lookup) to fail first. Non-fatal: the agent is
+    // already confirmed logged in on WxCC's side regardless of whether this succeeds.
+    try {
+      await live.ensureNotificationSocket(req.session);
+    } catch {
+      // best-effort
+    }
     res.json({ ok: true, alreadyLoggedIn: true, profile: req.session.profile, agentState: req.session.agentState });
   } catch (err) {
     // A failure here silently degrades to the team/dial-number picker client-side --

@@ -183,9 +183,7 @@ export async function getBuddyAgents(session, { state } = {}) {
   if (!session.tokens?.access_token) {
     throw new Error('Not connected to Webex Contact Center (no access token) - use /api/auth/login first');
   }
-  if (!session.liveSocket || session.liveSocket.readyState !== WebSocket.OPEN) {
-    throw new Error('Notification socket is not connected -- cannot receive the buddy list response');
-  }
+  await ensureNotificationSocket(session);
 
   const waitForResponse = new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -440,6 +438,17 @@ export async function wrapupTask(session, taskId, { auxCodeId, wrapUpReason } = 
   });
   session.currentTask = null;
   return data;
+}
+
+export async function ensureNotificationSocket(session) {
+  // Self-healing: the socket can be missing either because it was never (re)established
+  // after a server restart (the "already logged in" fast path doesn't call
+  // subscribeNotifications the way a full /login does) or because it simply dropped
+  // mid-shift (Cisco's gateway closing an idle connection, a network blip, etc.) --
+  // either way, try to open a fresh one on demand rather than permanently failing
+  // whatever needs it (e.g. getBuddyAgents) until the next full login.
+  if (session.liveSocket && session.liveSocket.readyState === WebSocket.OPEN) return;
+  await subscribeNotifications(session);
 }
 
 export async function subscribeNotifications(session) {
