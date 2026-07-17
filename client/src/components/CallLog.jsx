@@ -46,13 +46,9 @@ export function CallLog({ onClose }) {
                 <span className="call-log-when">{formatWhen(c.createdTimeMs)}</span>
               </div>
               <div className="call-log-row-meta">
-                <span>Talk {formatDuration(c.talkSec)}</span>
-                {c.holdSec > 0 && <span>Hold {formatDuration(c.holdSec)}</span>}
-                {c.consultSec > 0 && <span>Consult {formatDuration(c.consultSec)}</span>}
-                {c.conferenceSec > 0 && <span>Conf {formatDuration(c.conferenceSec)}</span>}
-                {c.wrapupSec > 0 && <span>Wrap {formatDuration(c.wrapupSec)}</span>}
+                <span>Total {formatDuration(c.totalSec)}</span>
               </div>
-              {c.wrapUpCode && <p className="call-log-row-code">{c.wrapUpCode}</p>}
+              {c.wrapUpCode && <p className="call-log-row-code">Wrap up code: {c.wrapUpCode}</p>}
             </div>
           ))}
         </div>

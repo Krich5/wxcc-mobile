@@ -18,6 +18,7 @@ export function PresenceBar({ onOpenCallLog }) {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [stateMenuOpen, setStateMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   // The state-change reason (e.g. "Login") only tells us WHAT state we're in; the
   // duration comes from the same WxCC agentSession record the dashboard already reads
@@ -68,6 +69,7 @@ export function PresenceBar({ onOpenCallLog }) {
   }, []);
 
   const applyState = async (value) => {
+    setStateMenuOpen(false);
     if (value.startsWith('current:')) return; // placeholder option, not a real choice
     if (value === 'Available') {
       try {
@@ -119,30 +121,47 @@ export function PresenceBar({ onOpenCallLog }) {
   const elapsed = selfBase
     ? formatElapsed(selfBase.baseSec + (Date.now() - selfBase.fetchedAtMs) / 1000)
     : null;
-  const labelWithElapsed = (value, label) => (value === selectedValue && elapsed ? `${label} ${elapsed}` : label);
+  // Only the closed button shows elapsed time -- the open list just shows plain state
+  // names, since a live-ticking clock frozen inside a dropdown option reads as stale/odd.
+  const currentLabel = isAvailable ? 'Available' : matchedCode?.name || currentIdleName || 'Idle';
 
   return (
     <>
       <header className="presence-bar">
         <div className="presence-bar-team">{session.profile?.teamName || 'Agent'}</div>
         <div className="presence-bar-actions">
-          <select
-            className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
-            value={selectedValue}
-            onChange={(e) => applyState(e.target.value)}
-          >
-            <option value="Available">{labelWithElapsed('Available', 'Available')}</option>
-            {currentIdleName && !matchedCode && (
-              <option value={`current:${currentIdleName}`}>
-                {labelWithElapsed(`current:${currentIdleName}`, currentIdleName)}
-              </option>
+          <div className="state-dropdown">
+            <button
+              type="button"
+              className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
+              onClick={() => setStateMenuOpen((o) => !o)}
+            >
+              <span>
+                {currentLabel}
+                {elapsed ? ` ${elapsed}` : ''}
+              </span>
+              <span className="state-select-caret">▾</span>
+            </button>
+            {stateMenuOpen && (
+              <>
+                <div className="state-dropdown-overlay" onClick={() => setStateMenuOpen(false)} />
+                <ul className="state-dropdown-list">
+                  <li
+                    className={selectedValue === 'Available' ? 'active' : ''}
+                    onClick={() => applyState('Available')}
+                  >
+                    Available
+                  </li>
+                  {currentIdleName && !matchedCode && <li className="active">{currentIdleName}</li>}
+                  {idleCodes.map((c) => (
+                    <li key={c.id} className={selectedValue === c.id ? 'active' : ''} onClick={() => applyState(c.id)}>
+                      {c.name}
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
-            {idleCodes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {labelWithElapsed(c.id, c.name)}
-              </option>
-            ))}
-          </select>
+          </div>
           <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
             <span />
             <span />

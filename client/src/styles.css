@@ -308,7 +308,14 @@ button.primary:disabled {
   opacity: 0.4;
 }
 
+.state-dropdown {
+  position: relative;
+}
+
 .state-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 8px 14px;
   border-radius: 999px;
   font-size: 0.85rem;
@@ -322,6 +329,50 @@ button.primary:disabled {
 .state-select.is-idle {
   border-color: var(--danger);
   color: var(--danger);
+}
+
+.state-select-caret {
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+
+.state-dropdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: transparent;
+}
+
+.state-dropdown-list {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 26;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  min-width: 170px;
+  background: var(--bg-elevated);
+  border: 1px solid #263457;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.state-dropdown-list li {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.state-dropdown-list li:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.state-dropdown-list li.active {
+  color: var(--brand);
+  font-weight: 600;
 }
 
 .active-call-card {
