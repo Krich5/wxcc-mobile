@@ -159,6 +159,40 @@ async function resolveCodeNames(session, ids) {
   return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
 }
 
+export async function resolveCiUserIds(session, wxccUserIds) {
+  // UNCONFIRMED -- best-effort fix for a real bug: /consult and /transfer with
+  // destinationType: "agent" reject WxCC's own "Contact Center User Id" (what
+  // agent-profile.userIds and the agentSession search API's agentId both return) with
+  // "The destination agent ID is invalid." Control Hub shows a distinct "Cisco User Id"
+  // on the same user record, which is apparently what's actually required. This mirrors
+  // the id=in=(...) filter pattern already confirmed working for /v2/team and
+  // /v2/auxiliary-code, applied to /v2/user instead -- neither the endpoint nor the
+  // response field name for the Cisco User Id has been confirmed, so the raw response is
+  // logged unconditionally to nail down the real shape from Railway logs on next use.
+  // Falls back to an empty map (callers fall back to the known-broken id) if the
+  // endpoint doesn't exist or the field-name guesses below don't match.
+  if (!wxccUserIds?.length) return new Map();
+  const ctx = await resolveAgentContext(session);
+  try {
+    const data = await authedFetch(
+      session,
+      `/organization/${ctx.orgId}/v2/user?filter=${encodeURIComponent(
+        `id=in=(${wxccUserIds.map((id) => `"${id}"`).join(',')})`
+      )}`
+    );
+    console.log('[consult] /v2/user?filter=id=in=(...) raw response:', JSON.stringify(data));
+    const map = new Map();
+    (data?.data || []).forEach((u) => {
+      const ciUserId = u.ciUserId || u.ciId || u.cIUserId || u.personId || u.webexUserId || u.webexId || null;
+      if (u.id && ciUserId) map.set(u.id, ciUserId);
+    });
+    return map;
+  } catch (err) {
+    console.log('[consult] /v2/user lookup failed (falling back to Contact Center User Id):', err.message);
+    return new Map();
+  }
+}
+
 export async function getIdleCodes(session) {
   const profile = await loadAgentProfile(session);
   return resolveCodeNames(session, profile?.idleCodes);

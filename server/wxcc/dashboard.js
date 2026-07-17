@@ -3,7 +3,7 @@
 // / .teams) rather than the whole org. GraphQL queries (task search + agentSession) are
 // ported from an existing in-house WxCC supervisor dashboard that already confirmed them
 // working against this same /search endpoint.
-import { authedFetch, baseUrl, resolveAgentContext, loadAgentProfile } from './liveProvider.js';
+import { authedFetch, baseUrl, resolveAgentContext, loadAgentProfile, resolveCiUserIds } from './liveProvider.js';
 
 const SERVICE_LEVEL_THRESHOLD_SEC = 30;
 const MAX_TASK_PAGES = 50;
@@ -270,7 +270,14 @@ export async function getConsultableAgents(session) {
     }
   });
   agents.sort((a, b) => a.name.localeCompare(b.name));
-  return agents;
+  // /consult and /transfer with destinationType: "agent" reject the Contact Center User
+  // Id above ("The destination agent ID is invalid") -- swap in the resolved Cisco User
+  // Id when we can get one, falling back to the known-broken id (with the original kept
+  // as contactCenterUserId) when the lookup doesn't find a match.
+  const ciMap = await resolveCiUserIds(session, agents.map((a) => a.id));
+  return agents.map((a) =>
+    ciMap.has(a.id) ? { ...a, contactCenterUserId: a.id, id: ciMap.get(a.id) } : a
+  );
 }
 
 function getCallStatusLabel(rawStatus) {
