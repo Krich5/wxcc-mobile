@@ -34,6 +34,11 @@ function ModeChoice() {
 
 function LiveAgentLoginForm() {
   const { refresh, setNotice } = useSession();
+  // WxCC itself may already consider this agent logged in (e.g. our own server
+  // restarted and lost session.profile, but the real agent session never ended) --
+  // check before showing the team/dial-number picker again, so a reload doesn't
+  // re-run /v2/agents/login and reset whatever real state the agent was actually in.
+  const [checkingExisting, setCheckingExisting] = useState(true);
   const [teams, setTeams] = useState(null); // null = loading, [] = failed/empty (fall back to free text)
   const [teamsError, setTeamsError] = useState(null);
   const [teamId, setTeamId] = useState('');
@@ -42,6 +47,16 @@ function LiveAgentLoginForm() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    api('/api/agent/existing-session')
+      .then(({ alreadyLoggedIn }) => {
+        if (alreadyLoggedIn) return refresh();
+        setCheckingExisting(false);
+      })
+      .catch(() => setCheckingExisting(false));
+  }, []);
+
+  useEffect(() => {
+    if (checkingExisting) return;
     api('/api/agent/teams')
       .then(({ teams: list, defaultDialNumber }) => {
         setTeams(list);
@@ -52,7 +67,11 @@ function LiveAgentLoginForm() {
         setTeamsError(err.message);
         setTeams([]);
       });
-  }, []);
+  }, [checkingExisting]);
+
+  if (checkingExisting) {
+    return <div className="screen center">Checking your session…</div>;
+  }
 
   const submit = async (e) => {
     e.preventDefault();

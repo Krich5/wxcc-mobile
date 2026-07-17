@@ -210,6 +210,51 @@ export async function getCallHistory(session, { limit = CALL_HISTORY_LIMIT } = {
   }));
 }
 
+function buildSelfSessionQuery(fromMs, toMs, agentId) {
+  // Same agentSession resource as buildSessionQuery/getDashboard, but filtered directly
+  // to this agent -- cheap enough to run on every app load/reload to answer "is this
+  // agent already logged into WxCC right now" without waiting for the full dashboard.
+  return `{
+  agentSession(
+    from: ${Math.floor(fromMs)}
+    to: ${Math.floor(toMs)}
+    filter: { and: [
+      { agentId: { equals: "${agentId}" } }
+      { isActive: { equals: true } }
+    ] }
+  ) {
+    agentSessions {
+      agentId agentName teamId teamName startTime
+      channelInfo { channelType currentState lastActivityTime idleCodeName connectedCount ronaCount }
+    }
+  }
+}`;
+}
+
+export async function checkExistingSession(session) {
+  // WxCC itself already knows whether this agent is logged in -- a server restart
+  // (which wipes our own in-memory session.profile) shouldn't force them back through
+  // the team/dial-number picker and re-run /v2/agents/login (which would reset whatever
+  // real state -- Available, mid-call, a custom idle reason -- they were actually in).
+  const ctx = await resolveAgentContext(session);
+  const now = Date.now();
+  const fromMs = now - 24 * 60 * 60 * 1000; // a still-open session could have started yesterday
+  const data = await runGraphQL(session, buildSelfSessionQuery(fromMs, now, ctx.agentId));
+  const row = (data?.agentSession?.agentSessions || [])[0];
+  if (!row) return null;
+  const stateValue = getSessionState(row);
+  const bucket = categorizeAgentState(stateValue);
+  const channels = Array.isArray(row?.channelInfo) ? row.channelInfo : [row?.channelInfo].filter(Boolean);
+  const telCh = channels.find((c) => c?.channelType === 'telephony') || channels[0];
+  return {
+    teamId: row.teamId || null,
+    teamName: row.teamName || null,
+    state: bucket,
+    stateLabel: getStateBadgeLabel(stateValue),
+    idleCode: bucket === 'idle' ? telCh?.idleCodeName || null : null,
+  };
+}
+
 export async function getActiveCall(session) {
   const ctx = await resolveAgentContext(session);
   const now = Date.now();
@@ -366,7 +411,9 @@ function formatTime(seconds) {
   const hrs = Math.floor(total / 3600);
   const mins = Math.floor((total % 3600) / 60);
   const secs = total % 60;
-  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  const mm = String(mins).padStart(2, '0');
+  const ss = String(secs).padStart(2, '0');
+  return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 const STATE_BUCKETS = {

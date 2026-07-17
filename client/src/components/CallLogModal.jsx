@@ -3,9 +3,12 @@ import { api } from '../lib/api.js';
 
 function formatDuration(totalSeconds) {
   const total = Math.max(0, Math.round(totalSeconds || 0));
-  const mins = Math.floor(total / 60);
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
   const secs = total % 60;
-  return `${mins}:${String(secs).padStart(2, '0')}`;
+  const mm = String(mins).padStart(2, '0');
+  const ss = String(secs).padStart(2, '0');
+  return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
 function formatWhen(ms) {

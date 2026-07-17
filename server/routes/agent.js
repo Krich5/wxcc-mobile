@@ -1,7 +1,7 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
-import { getDashboard, getActiveCall, getCallHistory } from '../wxcc/dashboard.js';
+import { getDashboard, getActiveCall, getCallHistory, checkExistingSession } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 
 const router = express.Router();
@@ -98,6 +98,26 @@ router.get('/call-log', async (req, res) => {
   try {
     const calls = await getCallHistory(req.session);
     res.json({ ok: true, calls });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/existing-session', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, alreadyLoggedIn: false });
+  try {
+    const existing = await checkExistingSession(req.session);
+    if (!existing) return res.json({ ok: true, alreadyLoggedIn: false });
+    const dialNumber = await live.getDefaultDialNumber(req.session);
+    req.session.profile = { teamId: existing.teamId, teamName: existing.teamName, dialNumber };
+    if (existing.state === 'available') {
+      req.session.agentState = 'Available';
+    } else if (existing.state === 'idle') {
+      req.session.agentState = `Idle: ${existing.idleCode || existing.stateLabel}`;
+    } else {
+      req.session.agentState = existing.stateLabel;
+    }
+    res.json({ ok: true, alreadyLoggedIn: true, profile: req.session.profile, agentState: req.session.agentState });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }
