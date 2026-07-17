@@ -337,10 +337,16 @@ export async function subscribeNotifications(session) {
     method: 'POST',
     body: JSON.stringify({ isKeepAliveEnabled: true, keepAliveInterval: 30, force: true }),
   });
-  if (!sub?.websocketUrl) {
+  // Logged unconditionally (not just on failure) so the very first real login after
+  // this deploy tells us the actual response shape -- websocketUrl was always a guess,
+  // never confirmed against a real response, which is exactly why this doesn't work.
+  console.log('[notifications] subscribe response:', JSON.stringify(sub));
+  const websocketUrl =
+    sub?.websocketUrl || sub?.webSocketUrl || sub?.url || sub?.uri || sub?.data?.websocketUrl || sub?.data?.webSocketUrl;
+  if (!websocketUrl) {
     throw new Error('Notification subscribe response did not include a websocketUrl');
   }
-  const ws = new WebSocket(sub.websocketUrl);
+  const ws = new WebSocket(websocketUrl);
   // We told the subscribe call keepAliveInterval: 30, which means WE'RE responsible for
   // keeping the socket alive, not just the server. Sending a raw WS ping frame every
   // 15s (well under 30s) is the protocol-correct default; if Cisco's gateway expects an
