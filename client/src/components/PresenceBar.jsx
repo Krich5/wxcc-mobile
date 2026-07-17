@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
+import { APP_VERSION } from '../version.js';
 
 function formatElapsed(totalSeconds) {
   const total = Math.max(0, Math.round(totalSeconds));
@@ -125,7 +126,10 @@ export function PresenceBar({
   return (
     <>
       <header className="presence-bar">
-        <div className="presence-bar-team">{session.profile?.teamName || 'Agent'}</div>
+        <div className="presence-bar-team">
+          <img className="presence-bar-logo" src="/icons/logo.png" alt="" />
+          <span>{session.profile?.teamName || 'Agent'}</span>
+        </div>
         <div className="presence-bar-actions">
           <div className="state-dropdown">
             <button
@@ -203,6 +207,7 @@ export function PresenceBar({
                 </button>
               )}
             </div>
+            <p className="side-panel-version">App version {APP_VERSION}</p>
             <button className="secondary" onClick={() => setConfirmSignOut(true)}>
               Sign Out
             </button>

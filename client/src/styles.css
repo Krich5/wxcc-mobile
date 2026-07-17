@@ -34,7 +34,16 @@ body {
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: url('/images/gradient-background-dark.svg');
+  background-size: cover;
+  background-position: top center;
+  background-repeat: no-repeat;
+  /* iOS Safari doesn't honor fixed backgrounds well (they end up scrolling with content
+     instead of staying put) -- an acceptable degraded fallback, since the alternative
+     (no fixed attachment) stretches this cover-sized image across the full scrollable
+     page height instead of just the viewport, which looks worse. */
+  background-attachment: fixed;
   color: var(--text);
   -webkit-tap-highlight-color: transparent;
 }
@@ -183,11 +192,27 @@ button.primary:disabled {
 }
 
 .presence-bar-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+.presence-bar-team span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.presence-bar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .presence-bar-actions {
@@ -287,6 +312,13 @@ button.primary:disabled {
 .side-panel-value {
   font-size: 1rem;
   font-weight: 600;
+}
+
+.side-panel-version {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
 }
 
 .pill {
