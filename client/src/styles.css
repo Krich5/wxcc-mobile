@@ -473,6 +473,48 @@ button.primary:disabled {
   white-space: nowrap;
 }
 
+.address-book-suggestions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #263457;
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.address-book-suggestions li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #1b2740;
+}
+
+.address-book-suggestions li:last-child {
+  border-bottom: none;
+}
+
+.address-book-suggestions li:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.address-book-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.address-book-number {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
 .dashboard {
   width: 100%;
   padding: 16px;

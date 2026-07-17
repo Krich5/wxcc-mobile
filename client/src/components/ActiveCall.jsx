@@ -23,6 +23,10 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
   // call.
   const [agents, setAgents] = useState(null);
   const [agentsError, setAgentsError] = useState(null);
+  // Same lazy-load-and-cache pattern as agents -- the org address book doesn't change
+  // mid-shift either.
+  const [addressBook, setAddressBook] = useState(null);
+  const [addressBookError, setAddressBookError] = useState(null);
   // Set once the initial /consult succeeds -- while true, the original caller is on hold
   // (WxCC does this automatically via holdParticipants: true) and the agent is talking
   // to the consulted party on a separate leg -- shown as two separate cards.
@@ -120,6 +124,14 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     setDestNumber('');
     setAgentId('');
     setPendingAction((current) => (current === action ? null : action));
+    if (addressBook === null && !addressBookError) {
+      api('/api/agent/address-book')
+        .then(({ entries }) => setAddressBook(entries || []))
+        .catch((err) => {
+          setAddressBookError(err.message);
+          setAddressBook([]);
+        });
+    }
   };
 
   const selectAgentType = () => {
@@ -137,7 +149,10 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
   const submitPendingAction = async () => {
     const to = destType === 'agent' ? agentId : destNumber.trim();
     if (!to) return;
-    const label = destType === 'agent' ? agents?.find((a) => a.id === to)?.name || to : to;
+    const label =
+      destType === 'agent'
+        ? agents?.find((a) => a.id === to)?.name || to
+        : addressBook?.find((e) => e.number === to)?.name || to;
     const ok = await runAction(pendingAction, { body: JSON.stringify({ to, destinationType: destType }) });
     if (ok) {
       if (pendingAction === 'consult') {
@@ -157,6 +172,18 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
       setAgentId('');
     }
   };
+
+  // Filtered as the agent types -- matches name or number, capped so the list stays
+  // scannable rather than dumping the whole address book under the input.
+  const addressBookMatches =
+    destType === 'dialNumber' && destNumber.trim() && addressBook
+      ? addressBook
+          .filter((e) => {
+            const q = destNumber.trim().toLowerCase();
+            return e.name?.toLowerCase().includes(q) || e.number?.includes(destNumber.trim());
+          })
+          .slice(0, 8)
+      : [];
 
   const completeConsultTransfer = async () => {
     const ok = await runAction('consult/transfer', {
@@ -272,7 +299,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                 {destType === 'dialNumber' ? (
                   <input
                     type="tel"
-                    placeholder="Destination number"
+                    placeholder="Search address book or enter a number"
                     value={destNumber}
                     onChange={(e) => setDestNumber(e.target.value)}
                     autoFocus
@@ -314,7 +341,18 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                   Cancel
                 </button>
               </div>
+              {addressBookMatches.length > 0 && (
+                <ul className="address-book-suggestions">
+                  {addressBookMatches.map((e) => (
+                    <li key={e.id} onClick={() => setDestNumber(e.number)}>
+                      <span className="address-book-name">{e.name}</span>
+                      <span className="address-book-number">{e.number}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
               {agentsError && <p className="error">{agentsError}</p>}
+              {addressBookError && <p className="error">{addressBookError}</p>}
             </div>
           )}
         </>

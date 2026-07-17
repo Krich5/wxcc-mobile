@@ -118,6 +118,16 @@ router.get('/consult-agents', async (req, res) => {
   }
 });
 
+router.get('/address-book', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, entries: [] });
+  try {
+    const entries = await live.getAddressBookEntries(req.session);
+    res.json({ ok: true, entries });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/existing-session', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, alreadyLoggedIn: false });
   try {

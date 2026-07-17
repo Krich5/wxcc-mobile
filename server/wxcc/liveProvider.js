@@ -183,6 +183,32 @@ export async function getDefaultWrapUpCode(session) {
   return codes.find((c) => c.defaultCode) || null;
 }
 
+export async function getAddressBookEntries(session) {
+  // Confirmed: agent-profile.addressBookId points at GET /organization/{orgId}/v2/
+  // address-book/{addressBookId}/entry, paginated via meta.page/meta.totalPages -- fetch
+  // every page (cached on the session) so search covers the whole book, not just
+  // whatever fits on page 0.
+  if (session.addressBookEntries) return session.addressBookEntries;
+  const ctx = await resolveAgentContext(session);
+  const profile = await loadAgentProfile(session);
+  const addressBookId = profile?.addressBookId;
+  if (!addressBookId) return [];
+  const entries = [];
+  let page = 0;
+  let totalPages = 1;
+  do {
+    const data = await authedFetch(
+      session,
+      `/organization/${ctx.orgId}/v2/address-book/${addressBookId}/entry?page=${page}&pageSize=100`
+    );
+    (data?.data || []).forEach((e) => entries.push({ id: e.id, name: e.name || e.number, number: e.number }));
+    totalPages = data?.meta?.totalPages || 1;
+    page += 1;
+  } while (page < totalPages && page < 50);
+  session.addressBookEntries = entries;
+  return entries;
+}
+
 export async function getWrapUpSettings(session) {
   const profile = await loadAgentProfile(session);
   // Confirmed: agent-profile.autoWrapAfterSeconds is actually in MILLISECONDS despite
