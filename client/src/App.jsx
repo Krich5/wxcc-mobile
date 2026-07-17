@@ -8,6 +8,7 @@ import { WrapUpModal } from './components/WrapUpModal.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { ActiveCall } from './components/ActiveCall.jsx';
 import { CallLog } from './components/CallLog.jsx';
+import { Spinner } from './components/Spinner.jsx';
 import { enableNotifications, hasExistingSubscription } from './lib/push.js';
 import { useActiveCall } from './hooks/useActiveCall.js';
 import { useSelfStatus } from './hooks/useSelfStatus.js';
@@ -26,7 +27,14 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  if (loading) return <div className="screen center">Loading…</div>;
+  if (loading) {
+    return (
+      <div className="screen center">
+        <Spinner />
+        <p>Loading…</p>
+      </div>
+    );
+  }
   if (!session.profile) return <LoginScreen />;
 
   const task = session.currentTask;

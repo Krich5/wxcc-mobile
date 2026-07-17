@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
+import { Spinner } from './Spinner.jsx';
 
 export function LoginScreen() {
   const { session, refresh } = useSession();
@@ -70,7 +71,12 @@ function LiveAgentLoginForm() {
   }, [checkingExisting]);
 
   if (checkingExisting) {
-    return <div className="screen center">Checking your session…</div>;
+    return (
+      <div className="screen center">
+        <Spinner />
+        <p>Loading…</p>
+      </div>
+    );
   }
 
   const submit = async (e) => {
