@@ -263,13 +263,25 @@ export async function endTask(session, taskId) {
 }
 
 export async function holdTask(session, taskId) {
-  // Confirmed: POST /v1/tasks/{taskId}/hold
-  return authedFetch(session, `/v1/tasks/${taskId}/hold`, { method: 'POST' });
+  // Confirmed: POST /v1/tasks/{taskId}/hold requires {mediaResourceId: taskId} in the
+  // body (Cisco returns 400 "Request body is missing" otherwise) -- not bodyless as
+  // originally assumed. mediaResourceId is the same value as the taskId itself in the
+  // confirmed example.
+  return authedFetch(session, `/v1/tasks/${taskId}/hold`, {
+    method: 'POST',
+    body: JSON.stringify({ mediaResourceId: taskId }),
+  });
 }
 
 export async function unholdTask(session, taskId) {
-  // Confirmed: POST /v1/tasks/{taskId}/unhold
-  return authedFetch(session, `/v1/tasks/${taskId}/unhold`, { method: 'POST' });
+  // Not independently confirmed via curl, but /hold (the same resource's companion
+  // endpoint) requires {mediaResourceId: taskId} in its body -- applying the same shape
+  // here rather than leaving unhold guaranteed-broken with the identical "Request body
+  // is missing" error.
+  return authedFetch(session, `/v1/tasks/${taskId}/unhold`, {
+    method: 'POST',
+    body: JSON.stringify({ mediaResourceId: taskId }),
+  });
 }
 
 export async function consultTask(session, taskId, to) {

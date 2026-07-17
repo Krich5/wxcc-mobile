@@ -247,10 +247,13 @@ export async function checkExistingSession(session) {
 function getCallStatusLabel(rawStatus) {
   // Confirmed: taskDetails.status is "connect" while the call is still ringing/alerting
   // (before the agent answers) and "connected" once actually talking -- neither is the
-  // agent-facing word we want, so map both to what the agent should see.
-  const s = (rawStatus || '').toLowerCase();
+  // agent-facing word we want, so map both to what the agent should see. Punctuation
+  // stripped before comparing since WxCC isn't consistent about "on_hold" vs "On-Hold"
+  // casing/separators across its own resources.
+  const s = (rawStatus || '').toLowerCase().replace(/[_-]/g, '');
   if (s === 'connect') return 'Ringing';
   if (s === 'connected' || s === 'talking') return 'Engaged';
+  if (s === 'onhold' || s === 'hold') return 'On Hold';
   return rawStatus || 'Active';
 }
 
@@ -418,7 +421,7 @@ function formatTime(seconds) {
 
 const STATE_BUCKETS = {
   available: ['AVAILABLE'],
-  onCall: ['CONNECTED', 'TALKING', 'ON_CALL', 'HOLD', 'CONSULT', 'CONFERENCE'],
+  onCall: ['CONNECTED', 'TALKING', 'ON_CALL', 'HOLD', 'ON_HOLD', 'CONSULT', 'CONFERENCE'],
   ringing: ['RESERVED', 'RINGING'],
   wrapUp: ['WRAPUP', 'WRAP_UP', 'WRAP_UP_AGENT', 'POST_CALL'],
   idle: ['IDLE', 'NOT_RESPONDING', 'NOT_RESPONDED', 'RONA'],
@@ -446,6 +449,7 @@ function categorizeAgentState(state) {
 function getStateBadgeLabel(stateValue) {
   const norm = (stateValue || '').toUpperCase();
   if (STATE_BUCKETS.available.includes(norm)) return 'Available';
+  if (norm === 'HOLD' || norm === 'ON_HOLD') return 'Hold';
   if (STATE_BUCKETS.onCall.includes(norm)) return 'Connected';
   if (STATE_BUCKETS.ringing.includes(norm)) return 'Ringing';
   if (STATE_BUCKETS.wrapUp.includes(norm)) return 'Wrap-up';

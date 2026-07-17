@@ -316,7 +316,7 @@ button.primary:disabled {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 8px 18px 8px 14px;
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 600;

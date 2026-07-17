@@ -75,11 +75,15 @@ export function PresenceBar({ onOpenCallLog }) {
       try {
         await api('/api/agent/state', { method: 'POST', body: JSON.stringify({ state: 'Available' }) });
         setSession((s) => ({ ...s, agentState: 'Available' }));
-        // Reset the ticker immediately rather than waiting up to DASHBOARD_POLL_MS for
-        // the next scheduled poll, then reconcile against the real search-API duration
-        // right away too.
+        // Reset the ticker immediately -- don't reconcile against the real search-API
+        // data right away, though: WxCC's own backend has a beat of lag before a state
+        // change we JUST made shows up there, so calling loadSelf() synchronously here
+        // read back the still-stale PREVIOUS state and stomped this optimistic update,
+        // producing a visible flash back to the old value before the next scheduled poll
+        // (DASHBOARD_POLL_MS later) finally caught the real change. A short delay avoids
+        // racing that lag while still confirming much sooner than the full interval.
         setSelfBase({ baseSec: 0, fetchedAtMs: Date.now() });
-        loadSelf();
+        setTimeout(loadSelf, 3000);
       } catch (err) {
         setNotice(err.message);
       }
@@ -94,7 +98,7 @@ export function PresenceBar({ onOpenCallLog }) {
       });
       setSession((s) => ({ ...s, agentState: `Idle: ${code.name}` }));
       setSelfBase({ baseSec: 0, fetchedAtMs: Date.now() });
-      loadSelf();
+      setTimeout(loadSelf, 3000);
     } catch (err) {
       setNotice(err.message);
     }

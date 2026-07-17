@@ -31,13 +31,22 @@ export function ActiveCall({ call }) {
     return () => clearInterval(tick);
   }, []);
 
-  // Hold/consult state isn't in the search-API response we poll -- track it locally, and
+  // Reconcile the Hold/Unhold toggle against the server-confirmed status on every poll
+  // (rather than trusting only our own optimistic toggle) -- statusLabel comes from the
+  // same search API/taskDetails.status this app already treats as source of truth
+  // elsewhere.
+  useEffect(() => {
+    if (!call) return;
+    const reallyOnHold = call.statusLabel === 'On Hold';
+    setOnHold((prev) => (prev === reallyOnHold ? prev : reallyOnHold));
+  }, [call?.statusLabel]);
+
+  // Consult state isn't in the search-API response we poll -- track it locally, and
   // reset it whenever we start tracking a different call, so stale state can't leak from
   // one call into the next.
   useEffect(() => {
     if ((call?.id || null) !== lastCallIdRef.current) {
       lastCallIdRef.current = call?.id || null;
-      setOnHold(false);
       setPendingAction(null);
       setDestNumber('');
       setInConsult(false);
@@ -109,8 +118,10 @@ export function ActiveCall({ call }) {
   };
 
   // Ringing calls aren't answered through this app (the agent's own phone rings) -- call
-  // controls only make sense once the call is actually engaged.
-  const engaged = call.statusLabel === 'Engaged';
+  // controls only make sense once the call is actually engaged (including on hold --
+  // that's still an active call the agent needs Unhold/Transfer/End for, not a reason
+  // to hide the whole control row).
+  const engaged = call.statusLabel === 'Engaged' || call.statusLabel === 'On Hold';
 
   return (
     <div className="active-call-card">
