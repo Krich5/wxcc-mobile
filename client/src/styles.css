@@ -355,6 +355,50 @@ button.primary:disabled {
   text-transform: capitalize;
 }
 
+.active-call-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.active-call-actions .pill {
+  flex: 1;
+  min-width: 72px;
+  text-align: center;
+}
+
+.active-call-actions .pill.end-pill {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
+.active-call-dest {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.active-call-dest input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #263457;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.active-call-dest button.primary,
+.active-call-dest button.secondary {
+  width: auto;
+  max-width: none;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
 .dashboard {
   width: 100%;
   padding: 16px;

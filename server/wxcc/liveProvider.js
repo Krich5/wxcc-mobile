@@ -257,10 +257,36 @@ export async function answerTask(session, taskId) {
 }
 
 export async function endTask(session, taskId) {
-  // TODO verify against the Call Control REST APIs (end contact).
-  const data = await authedFetch(session, `/v2/agents/contact/${taskId}/end`, { method: 'POST' });
-  if (session.currentTask?.id === taskId) session.currentTask.status = 'wrapup';
-  return data;
+  // Confirmed: POST /v1/tasks/{taskId}/end -- not the /v2/agents/contact/... path this
+  // was originally guessed as.
+  return authedFetch(session, `/v1/tasks/${taskId}/end`, { method: 'POST' });
+}
+
+export async function holdTask(session, taskId) {
+  // Confirmed: POST /v1/tasks/{taskId}/hold
+  return authedFetch(session, `/v1/tasks/${taskId}/hold`, { method: 'POST' });
+}
+
+export async function unholdTask(session, taskId) {
+  // Confirmed: POST /v1/tasks/{taskId}/unhold
+  return authedFetch(session, `/v1/tasks/${taskId}/unhold`, { method: 'POST' });
+}
+
+export async function consultTask(session, taskId, to) {
+  // Confirmed: POST /v1/tasks/{taskId}/consult with {to, destinationType: "dialNumber",
+  // holdParticipants: true}.
+  return authedFetch(session, `/v1/tasks/${taskId}/consult`, {
+    method: 'POST',
+    body: JSON.stringify({ to, destinationType: 'dialNumber', holdParticipants: true }),
+  });
+}
+
+export async function transferTask(session, taskId, to) {
+  // Confirmed: POST /v1/tasks/{taskId}/transfer with {to, destinationType: "dialNumber"}.
+  return authedFetch(session, `/v1/tasks/${taskId}/transfer`, {
+    method: 'POST',
+    body: JSON.stringify({ to, destinationType: 'dialNumber' }),
+  });
 }
 
 export async function wrapupTask(session, taskId, { auxCodeId, wrapUpReason } = {}) {

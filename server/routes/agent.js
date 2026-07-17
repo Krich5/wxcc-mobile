@@ -205,6 +205,46 @@ router.post('/tasks/:id/end', async (req, res) => {
   }
 });
 
+router.post('/tasks/:id/hold', async (req, res) => {
+  try {
+    const data = await providerFor(req.session).holdTask(req.session, req.params.id);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/unhold', async (req, res) => {
+  try {
+    const data = await providerFor(req.session).unholdTask(req.session, req.params.id);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/consult', async (req, res) => {
+  const { to } = req.body || {};
+  if (!to) return res.status(400).json({ ok: false, error: 'Destination number is required' });
+  try {
+    const data = await providerFor(req.session).consultTask(req.session, req.params.id, to);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/transfer', async (req, res) => {
+  const { to } = req.body || {};
+  if (!to) return res.status(400).json({ ok: false, error: 'Destination number is required' });
+  try {
+    const data = await providerFor(req.session).transferTask(req.session, req.params.id, to);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/tasks/:id/wrapup', async (req, res) => {
   const { auxCodeId, wrapUpReason } = req.body || {};
   try {

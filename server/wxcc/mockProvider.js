@@ -59,3 +59,19 @@ export function wrapupTask(session, taskId, { auxCodeId, wrapUpReason } = {}) {
   session.emitter.emit('task:wrapup-complete', result);
   return result;
 }
+
+export function holdTask(session, taskId) {
+  return { taskId, held: true };
+}
+
+export function unholdTask(session, taskId) {
+  return { taskId, held: false };
+}
+
+export function consultTask(session, taskId, to) {
+  return { taskId, to };
+}
+
+export function transferTask(session, taskId, to) {
+  return { taskId, to };
+}
