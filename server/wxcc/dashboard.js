@@ -244,6 +244,35 @@ export async function checkExistingSession(session) {
   };
 }
 
+export async function getConsultableAgents(session) {
+  // Confirmed: agent-profile.buddyTeams (team IDs) and .userIds (individual agent IDs)
+  // together define who this agent may consult/transfer to (destinationType: "agent").
+  // Neither field carries a display name, so resolve names via the same confirmed
+  // buildSessionQuery shape used elsewhere in this file (no per-agent filter -- that's
+  // exactly the mistake that broke checkExistingSession earlier), matching rows against
+  // buddyTeams/userIds in JS afterward.
+  const ctx = await resolveAgentContext(session);
+  const profile = await loadAgentProfile(session);
+  const buddyTeams = new Set(profile?.buddyTeams || []);
+  const userIds = new Set(profile?.userIds || []);
+  if (!buddyTeams.size && !userIds.size) return [];
+  const now = Date.now();
+  const fromMs = now - 24 * 60 * 60 * 1000;
+  const data = await runGraphQL(session, buildSessionQuery(fromMs, now));
+  const rows = data?.agentSession?.agentSessions || [];
+  const seen = new Set();
+  const agents = [];
+  rows.forEach((r) => {
+    if (!r?.agentId || r.agentId === ctx.agentId || seen.has(r.agentId)) return;
+    if (buddyTeams.has(r.teamId) || userIds.has(r.agentId)) {
+      seen.add(r.agentId);
+      agents.push({ id: r.agentId, name: r.agentName || r.agentId, teamId: r.teamId || null });
+    }
+  });
+  agents.sort((a, b) => a.name.localeCompare(b.name));
+  return agents;
+}
+
 function getCallStatusLabel(rawStatus) {
   // Confirmed: taskDetails.status is "connect" while the call is still ringing/alerting
   // (before the agent answers) and "connected" once actually talking -- neither is the

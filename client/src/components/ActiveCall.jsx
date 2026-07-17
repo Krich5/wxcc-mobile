@@ -15,12 +15,21 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
   const [, forceTick] = useState(0);
   const [onHold, setOnHold] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'consult' | 'transfer' | null
+  const [destType, setDestType] = useState('dialNumber'); // 'dialNumber' | 'agent'
   const [destNumber, setDestNumber] = useState('');
+  const [agentId, setAgentId] = useState('');
+  // Lazily loaded (and cached) the first time the agent switches to the Agent tab --
+  // agent-profile.buddyTeams/userIds rarely change mid-shift, so no need to re-fetch per
+  // call.
+  const [agents, setAgents] = useState(null);
+  const [agentsError, setAgentsError] = useState(null);
   // Set once the initial /consult succeeds -- while true, the original caller is on hold
   // (WxCC does this automatically via holdParticipants: true) and the agent is talking
   // to the consulted party on a separate leg -- shown as two separate cards.
   const [inConsult, setInConsult] = useState(false);
   const [consultTo, setConsultTo] = useState('');
+  const [consultDestType, setConsultDestType] = useState('dialNumber');
+  const [consultLabel, setConsultLabel] = useState('');
   const [consultStartedAtMs, setConsultStartedAtMs] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -48,9 +57,12 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     if ((call?.id || null) !== lastCallIdRef.current) {
       lastCallIdRef.current = call?.id || null;
       setPendingAction(null);
+      setDestType('dialNumber');
       setDestNumber('');
+      setAgentId('');
       setInConsult(false);
       setConsultTo('');
+      setConsultLabel('');
       setConsultStartedAtMs(null);
       setError(null);
     }
@@ -104,17 +116,35 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
 
   const togglePendingAction = (action) => {
     setError(null);
+    setDestType('dialNumber');
+    setDestNumber('');
+    setAgentId('');
     setPendingAction((current) => (current === action ? null : action));
   };
 
+  const selectAgentType = () => {
+    setDestType('agent');
+    if (agents === null && !agentsError) {
+      api('/api/agent/consult-agents')
+        .then(({ agents: list }) => setAgents(list || []))
+        .catch((err) => {
+          setAgentsError(err.message);
+          setAgents([]);
+        });
+    }
+  };
+
   const submitPendingAction = async () => {
-    const to = destNumber.trim();
+    const to = destType === 'agent' ? agentId : destNumber.trim();
     if (!to) return;
-    const ok = await runAction(pendingAction, { body: JSON.stringify({ to }) });
+    const label = destType === 'agent' ? agents?.find((a) => a.id === to)?.name || to : to;
+    const ok = await runAction(pendingAction, { body: JSON.stringify({ to, destinationType: destType }) });
     if (ok) {
       if (pendingAction === 'consult') {
         setInConsult(true);
         setConsultTo(to);
+        setConsultDestType(destType);
+        setConsultLabel(label);
         setConsultStartedAtMs(Date.now());
       } else if (pendingAction === 'transfer') {
         // A completed transfer hands the call off entirely -- confirmed the moment this
@@ -122,20 +152,27 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
         onEnded?.(call.id);
       }
       setPendingAction(null);
+      setDestType('dialNumber');
       setDestNumber('');
+      setAgentId('');
     }
   };
 
   const completeConsultTransfer = async () => {
-    const ok = await runAction('consult/transfer', { body: JSON.stringify({ to: consultTo }) });
+    const ok = await runAction('consult/transfer', {
+      body: JSON.stringify({ to: consultTo, destinationType: consultDestType }),
+    });
     if (ok) onEnded?.(call.id);
   };
 
   const mergeConsult = async () => {
-    const ok = await runAction('consult/conference', { body: JSON.stringify({ to: consultTo }) });
+    const ok = await runAction('consult/conference', {
+      body: JSON.stringify({ to: consultTo, destinationType: consultDestType }),
+    });
     if (ok) {
       setInConsult(false);
       setConsultTo('');
+      setConsultLabel('');
       setConsultStartedAtMs(null);
     }
   };
@@ -145,6 +182,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     if (ok) {
       setInConsult(false);
       setConsultTo('');
+      setConsultLabel('');
       setConsultStartedAtMs(null);
     }
   };
@@ -162,7 +200,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
         </div>
         <div className="active-call-card">
           <p className="active-call-label">Consulting</p>
-          <p className="active-call-number">{consultTo}</p>
+          <p className="active-call-number">{consultLabel}</p>
           <p className="active-call-meta">Consult · {formatElapsed(consultElapsedSec)}</p>
           <div className="active-call-actions">
             <button className="pill" onClick={completeConsultTransfer} disabled={busy}>
@@ -217,25 +255,66 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
 
           {pendingAction && (
             <div className="active-call-dest">
-              <input
-                type="tel"
-                placeholder="Destination number"
-                value={destNumber}
-                onChange={(e) => setDestNumber(e.target.value)}
-                autoFocus
-              />
-              <button className="primary" onClick={submitPendingAction} disabled={busy || !destNumber.trim()}>
-                {pendingAction === 'consult' ? 'Consult' : 'Transfer'}
-              </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setPendingAction(null);
-                  setDestNumber('');
-                }}
-              >
-                Cancel
-              </button>
+              <div className="active-call-dest-row">
+                <button
+                  type="button"
+                  className={`pill ${destType === 'dialNumber' ? 'active' : ''}`}
+                  onClick={() => setDestType('dialNumber')}
+                >
+                  Number
+                </button>
+                <button type="button" className={`pill ${destType === 'agent' ? 'active' : ''}`} onClick={selectAgentType}>
+                  Agent
+                </button>
+              </div>
+
+              <div className="active-call-dest-row">
+                {destType === 'dialNumber' ? (
+                  <input
+                    type="tel"
+                    placeholder="Destination number"
+                    value={destNumber}
+                    onChange={(e) => setDestNumber(e.target.value)}
+                    autoFocus
+                  />
+                ) : (
+                  <select value={agentId} onChange={(e) => setAgentId(e.target.value)}>
+                    <option value="">
+                      {agentsError
+                        ? "Couldn't load agents"
+                        : agents === null
+                          ? 'Loading agents…'
+                          : agents.length
+                            ? 'Choose an agent'
+                            : 'No agents available'}
+                    </option>
+                    {(agents || []).map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <button
+                  className="primary"
+                  onClick={submitPendingAction}
+                  disabled={busy || !(destType === 'agent' ? agentId : destNumber.trim())}
+                >
+                  {pendingAction === 'consult' ? 'Consult' : 'Transfer'}
+                </button>
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    setPendingAction(null);
+                    setDestType('dialNumber');
+                    setDestNumber('');
+                    setAgentId('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              {agentsError && <p className="error">{agentsError}</p>}
             </div>
           )}
         </>

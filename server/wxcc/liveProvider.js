@@ -282,30 +282,32 @@ export async function unholdTask(session, taskId) {
   });
 }
 
-export async function consultTask(session, taskId, to) {
-  // Confirmed: POST /v1/tasks/{taskId}/consult with {to, destinationType: "dialNumber",
-  // holdParticipants: true}.
+export async function consultTask(session, taskId, to, destinationType = 'dialNumber') {
+  // Confirmed: POST /v1/tasks/{taskId}/consult with {to, destinationType,
+  // holdParticipants: true}. destinationType is "dialNumber", "agent", "queue", or
+  // "entryPoint" -- "to" is the matching id (a raw number for dialNumber, an agent/
+  // queue/entry-point id otherwise).
   return authedFetch(session, `/v1/tasks/${taskId}/consult`, {
     method: 'POST',
-    body: JSON.stringify({ to, destinationType: 'dialNumber', holdParticipants: true }),
+    body: JSON.stringify({ to, destinationType, holdParticipants: true }),
   });
 }
 
-export async function transferTask(session, taskId, to) {
-  // Confirmed: POST /v1/tasks/{taskId}/transfer with {to, destinationType: "dialNumber"}.
+export async function transferTask(session, taskId, to, destinationType = 'dialNumber') {
+  // Confirmed: POST /v1/tasks/{taskId}/transfer with {to, destinationType}.
   return authedFetch(session, `/v1/tasks/${taskId}/transfer`, {
     method: 'POST',
-    body: JSON.stringify({ to, destinationType: 'dialNumber' }),
+    body: JSON.stringify({ to, destinationType }),
   });
 }
 
-export async function consultTransfer(session, taskId, to) {
-  // Confirmed: POST /v1/tasks/{taskId}/consult/transfer with {to, destinationType:
-  // "dialNumber"} -- completes an in-progress consult by transferring the original
-  // call to the consulted party.
+export async function consultTransfer(session, taskId, to, destinationType = 'dialNumber') {
+  // Confirmed: POST /v1/tasks/{taskId}/consult/transfer with {to, destinationType} --
+  // completes an in-progress consult by transferring the original call to the
+  // consulted party.
   return authedFetch(session, `/v1/tasks/${taskId}/consult/transfer`, {
     method: 'POST',
-    body: JSON.stringify({ to, destinationType: 'dialNumber' }),
+    body: JSON.stringify({ to, destinationType }),
   });
 }
 
@@ -318,12 +320,12 @@ export async function consultEnd(session, taskId) {
   });
 }
 
-export async function consultConference(session, taskId, to) {
-  // Confirmed: POST /v1/tasks/{taskId}/consult/conference with {to, destinationType:
-  // "dialNumber"} -- merges the consult into a 3-way conference.
+export async function consultConference(session, taskId, to, destinationType = 'dialNumber') {
+  // Confirmed: POST /v1/tasks/{taskId}/consult/conference with {to, destinationType} --
+  // merges the consult into a 3-way conference.
   return authedFetch(session, `/v1/tasks/${taskId}/consult/conference`, {
     method: 'POST',
-    body: JSON.stringify({ to, destinationType: 'dialNumber' }),
+    body: JSON.stringify({ to, destinationType }),
   });
 }
 

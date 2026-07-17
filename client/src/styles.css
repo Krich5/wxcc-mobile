@@ -439,12 +439,23 @@ button.primary:disabled {
 
 .active-call-dest {
   display: flex;
+  flex-direction: column;
   gap: 8px;
   margin-top: 10px;
+}
+
+.active-call-dest-row {
+  display: flex;
+  gap: 8px;
   align-items: center;
 }
 
-.active-call-dest input {
+.active-call-dest-row .pill {
+  flex: 0 1 auto;
+}
+
+.active-call-dest input,
+.active-call-dest select {
   flex: 1;
   min-width: 0;
   padding: 10px 12px;

@@ -1,7 +1,7 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
-import { getDashboard, getActiveCall, getCallHistory, checkExistingSession } from '../wxcc/dashboard.js';
+import { getDashboard, getActiveCall, getCallHistory, checkExistingSession, getConsultableAgents } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 import { revokeWebexTokens } from './auth.js';
 
@@ -103,6 +103,16 @@ router.get('/call-log', async (req, res) => {
   try {
     const calls = await getCallHistory(req.session);
     res.json({ ok: true, calls });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/consult-agents', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, agents: [] });
+  try {
+    const agents = await getConsultableAgents(req.session);
+    res.json({ ok: true, agents });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }
@@ -233,10 +243,10 @@ router.post('/tasks/:id/unhold', async (req, res) => {
 });
 
 router.post('/tasks/:id/consult', async (req, res) => {
-  const { to } = req.body || {};
-  if (!to) return res.status(400).json({ ok: false, error: 'Destination number is required' });
+  const { to, destinationType } = req.body || {};
+  if (!to) return res.status(400).json({ ok: false, error: 'Destination is required' });
   try {
-    const data = await providerFor(req.session).consultTask(req.session, req.params.id, to);
+    const data = await providerFor(req.session).consultTask(req.session, req.params.id, to, destinationType);
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });
@@ -244,10 +254,10 @@ router.post('/tasks/:id/consult', async (req, res) => {
 });
 
 router.post('/tasks/:id/transfer', async (req, res) => {
-  const { to } = req.body || {};
-  if (!to) return res.status(400).json({ ok: false, error: 'Destination number is required' });
+  const { to, destinationType } = req.body || {};
+  if (!to) return res.status(400).json({ ok: false, error: 'Destination is required' });
   try {
-    const data = await providerFor(req.session).transferTask(req.session, req.params.id, to);
+    const data = await providerFor(req.session).transferTask(req.session, req.params.id, to, destinationType);
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });
@@ -255,10 +265,10 @@ router.post('/tasks/:id/transfer', async (req, res) => {
 });
 
 router.post('/tasks/:id/consult/transfer', async (req, res) => {
-  const { to } = req.body || {};
-  if (!to) return res.status(400).json({ ok: false, error: 'Destination number is required' });
+  const { to, destinationType } = req.body || {};
+  if (!to) return res.status(400).json({ ok: false, error: 'Destination is required' });
   try {
-    const data = await providerFor(req.session).consultTransfer(req.session, req.params.id, to);
+    const data = await providerFor(req.session).consultTransfer(req.session, req.params.id, to, destinationType);
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });
@@ -275,10 +285,10 @@ router.post('/tasks/:id/consult/end', async (req, res) => {
 });
 
 router.post('/tasks/:id/consult/conference', async (req, res) => {
-  const { to } = req.body || {};
-  if (!to) return res.status(400).json({ ok: false, error: 'Destination number is required' });
+  const { to, destinationType } = req.body || {};
+  if (!to) return res.status(400).json({ ok: false, error: 'Destination is required' });
   try {
-    const data = await providerFor(req.session).consultConference(req.session, req.params.id, to);
+    const data = await providerFor(req.session).consultConference(req.session, req.params.id, to, destinationType);
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });
