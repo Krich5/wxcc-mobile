@@ -75,3 +75,15 @@ export function consultTask(session, taskId, to) {
 export function transferTask(session, taskId, to) {
   return { taskId, to };
 }
+
+export function consultTransfer(session, taskId, to) {
+  return { taskId, to };
+}
+
+export function consultEnd(session, taskId) {
+  return { taskId };
+}
+
+export function consultConference(session, taskId, to) {
+  return { taskId, to };
+}

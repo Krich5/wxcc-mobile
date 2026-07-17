@@ -289,6 +289,34 @@ export async function transferTask(session, taskId, to) {
   });
 }
 
+export async function consultTransfer(session, taskId, to) {
+  // Confirmed: POST /v1/tasks/{taskId}/consult/transfer with {to, destinationType:
+  // "dialNumber"} -- completes an in-progress consult by transferring the original
+  // call to the consulted party.
+  return authedFetch(session, `/v1/tasks/${taskId}/consult/transfer`, {
+    method: 'POST',
+    body: JSON.stringify({ to, destinationType: 'dialNumber' }),
+  });
+}
+
+export async function consultEnd(session, taskId) {
+  // Confirmed: POST /v1/tasks/{taskId}/consult/end with {} -- ends the consult leg,
+  // returning to just the original call.
+  return authedFetch(session, `/v1/tasks/${taskId}/consult/end`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function consultConference(session, taskId, to) {
+  // Confirmed: POST /v1/tasks/{taskId}/consult/conference with {to, destinationType:
+  // "dialNumber"} -- merges the consult into a 3-way conference.
+  return authedFetch(session, `/v1/tasks/${taskId}/consult/conference`, {
+    method: 'POST',
+    body: JSON.stringify({ to, destinationType: 'dialNumber' }),
+  });
+}
+
 export async function wrapupTask(session, taskId, { auxCodeId, wrapUpReason } = {}) {
   // Confirmed against this org's own curl example: POST /v1/tasks/{taskId}/wrapup with
   // {auxCodeId, wrapUpReason} -- not the /v2/agents/contact/... path or wrapUpCode field

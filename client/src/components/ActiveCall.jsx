@@ -16,6 +16,12 @@ export function ActiveCall({ call }) {
   const [onHold, setOnHold] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'consult' | 'transfer' | null
   const [destNumber, setDestNumber] = useState('');
+  // Set once the initial /consult succeeds -- while true, the agent is talking to the
+  // consulted party (the original call held automatically via holdParticipants) and the
+  // available actions switch to completing that consult (Transfer/Merge/End Consult)
+  // rather than the normal Hold/Consult/Transfer/End row.
+  const [inConsult, setInConsult] = useState(false);
+  const [consultTo, setConsultTo] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const lastCallIdRef = useRef(null);
@@ -25,15 +31,17 @@ export function ActiveCall({ call }) {
     return () => clearInterval(tick);
   }, []);
 
-  // Hold state isn't in the search-API response we poll -- track it locally, and reset
-  // it (along with any pending consult/transfer) whenever we start tracking a different
-  // call, so stale "on hold"/open-input state can't leak from one call into the next.
+  // Hold/consult state isn't in the search-API response we poll -- track it locally, and
+  // reset it whenever we start tracking a different call, so stale state can't leak from
+  // one call into the next.
   useEffect(() => {
     if ((call?.id || null) !== lastCallIdRef.current) {
       lastCallIdRef.current = call?.id || null;
       setOnHold(false);
       setPendingAction(null);
       setDestNumber('');
+      setInConsult(false);
+      setConsultTo('');
       setError(null);
     }
   }, [call?.id]);
@@ -73,8 +81,30 @@ export function ActiveCall({ call }) {
     if (!to) return;
     const ok = await runAction(pendingAction, { body: JSON.stringify({ to }) });
     if (ok) {
+      if (pendingAction === 'consult') {
+        setInConsult(true);
+        setConsultTo(to);
+      }
       setPendingAction(null);
       setDestNumber('');
+    }
+  };
+
+  const completeConsultTransfer = () => runAction('consult/transfer', { body: JSON.stringify({ to: consultTo }) });
+
+  const mergeConsult = async () => {
+    const ok = await runAction('consult/conference', { body: JSON.stringify({ to: consultTo }) });
+    if (ok) {
+      setInConsult(false);
+      setConsultTo('');
+    }
+  };
+
+  const endConsult = async () => {
+    const ok = await runAction('consult/end', { body: JSON.stringify({}) });
+    if (ok) {
+      setInConsult(false);
+      setConsultTo('');
     }
   };
 
@@ -91,7 +121,21 @@ export function ActiveCall({ call }) {
         {call.team ? ` · ${call.team}` : ''}
       </p>
 
-      {engaged && (
+      {engaged && inConsult && (
+        <div className="active-call-actions">
+          <button className="pill" onClick={completeConsultTransfer} disabled={busy}>
+            Transfer
+          </button>
+          <button className="pill" onClick={mergeConsult} disabled={busy}>
+            Merge
+          </button>
+          <button className="pill end-pill" onClick={endConsult} disabled={busy}>
+            End Consult
+          </button>
+        </div>
+      )}
+
+      {engaged && !inConsult && (
         <>
           <div className="active-call-actions">
             <button className="pill" onClick={toggleHold} disabled={busy}>
