@@ -3,6 +3,7 @@ import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
 import { getDashboard, getActiveCall, getCallHistory, checkExistingSession } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
+import { revokeWebexTokens } from './auth.js';
 
 const router = express.Router();
 
@@ -60,6 +61,10 @@ router.post('/logout', async (req, res) => {
     // Non-fatal: sign-out should always land back on the main page, even if the real
     // WxCC logout call fails (e.g. the agent never actually finished logging in yet).
   }
+  // Revoke the actual Webex OAuth token (not just forget it locally) BEFORE clearing
+  // req.session.tokens below -- otherwise sign-out only ever cleared our own cookie,
+  // leaving the token itself (and the underlying Webex sign-in) still fully valid.
+  await revokeWebexTokens(req.session);
   // Fully reset -- otherwise mode/tokens/cached identity would survive a reload and
   // the app would land back on the team screen instead of the actual main page.
   req.session.mode = null;

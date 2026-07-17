@@ -9,6 +9,22 @@ const router = express.Router();
 const AUTHORIZE_URL = 'https://webexapis.com/v1/authorize';
 const TOKEN_URL = 'https://webexapis.com/v1/access_token';
 
+// Documented Webex Integration behavior: DELETE https://webexapis.com/v1/access_token
+// (Bearer = the token itself) permanently revokes it at Webex -- without this, "sign
+// out" only forgot the token locally in our own cookie/session; the token itself
+// remained valid indefinitely and Webex's own SSO session was untouched.
+export async function revokeWebexTokens(session) {
+  if (!session.tokens?.access_token) return;
+  try {
+    await fetch(TOKEN_URL, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session.tokens.access_token}` },
+    });
+  } catch {
+    // Non-fatal -- sign-out should still clear our own session/cookie either way.
+  }
+}
+
 router.get('/login', (req, res) => {
   if (!process.env.WEBEX_CLIENT_ID) {
     return res.status(400).send('WEBEX_CLIENT_ID is not configured on the server');

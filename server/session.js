@@ -36,7 +36,17 @@ export function persistTokens(res, tokens) {
 }
 
 export function clearTokenCookie(res) {
-  res.clearCookie(TOKEN_COOKIE);
+  // clearCookie must be called with the SAME attributes the cookie was originally set
+  // with (httpOnly/sameSite/secure) -- browsers (Safari in particular) can silently fail
+  // to overwrite/expire a cookie whose attributes don't match, which meant sign-out
+  // wasn't actually clearing this cookie: the next request's sessionMiddleware would
+  // rehydrate right back from the still-present cookie, landing the agent on the
+  // team/dial picker instead of a real logged-out state.
+  res.clearCookie(TOKEN_COOKIE, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
 }
 
 async function refreshAccessToken(session) {
