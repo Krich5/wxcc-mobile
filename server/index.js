@@ -28,4 +28,4 @@ app.get(/^\/(?!api\/).*/, (req, res) => {
 });
 
 const port = process.env.PORT || 8080;
-app.listen(port, () => console.log(`WxCC Mobile POC server listening on :${port}`));
+app.listen(port, () => console.log(`WxCC Mobile server listening on :${port}`));

@@ -1,7 +1,7 @@
 {
-  "name": "WxCC Mobile Agent (POC)",
+  "name": "WxCC Mobile Agent",
   "short_name": "WxCC Agent",
-  "description": "Proof-of-concept installable mobile agent client for Webex Contact Center",
+  "description": "Installable mobile agent client for Webex Contact Center",
   "theme_color": "#0057d8",
   "background_color": "#0b1220",
   "display": "standalone",

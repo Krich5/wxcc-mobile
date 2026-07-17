@@ -1,4 +1,4 @@
-# WxCC Mobile Agent — POC
+# WxCC Mobile Agent
 
 An installable PWA that proves the concept of a mobile Webex Contact Center agent client:
 sign in, go Available/Idle, get alerted on an incoming task (even via a native push
@@ -14,8 +14,7 @@ notification), answer, run in-call controls, and wrap up.
   requires a Webex Contact Center Integration (Client ID/Secret, `cjp:user` scope) from
   https://developer.webex-cx.com. **The exact endpoint paths/payload field names in
   `liveProvider.js` are marked `TODO` and are best-effort from public docs/blog posts** —
-  confirm them against your org's authenticated Postman collection before treating this as
-  more than a POC.
+  confirm them against your org's authenticated Postman collection before relying on them.
 
 ## Project layout
 
@@ -83,4 +82,4 @@ This is a single Node service — the server serves the built client as static f
 | Live OAuth against Webex Identity | Real shape (standard Webex Integration OAuth + `cjp:user` scope) |
 | Live agent login/logout/state/call-control REST calls | Best-effort skeleton — verify field names |
 | Live WebSocket notification subscription/event mapping | Best-effort skeleton — verify event/type names |
-| Actual call audio (WebRTC media) | Not implemented — out of scope for this POC |
+| Actual call audio (WebRTC media) | Not implemented — out of scope |

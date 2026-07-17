@@ -1,5 +1,5 @@
-// Hand-written service worker (no build step, no workbox) — kept intentionally simple
-// for a POC: a basic offline app-shell cache plus push notification handling.
+// Hand-written service worker (no build step, no workbox) — kept intentionally simple:
+// a basic offline app-shell cache plus push notification handling.
 //
 // Navigations and the manifest go network-first: an agent app must never get stuck
 // showing yesterday's build just because it's cache-first. Hashed static assets

@@ -2,8 +2,8 @@
 // APIs (https://developer.webex-cx.com). Endpoint paths and payload shapes below are
 // drawn from public Cisco blog posts and starter samples, NOT a verified Postman
 // collection -- confirm every path/field against your own authenticated
-// developer.webex-cx.com account (requires a WxCC-licensed org) before relying on this
-// beyond the POC. Each TODO marks a spot to double check.
+// developer.webex-cx.com account (requires a WxCC-licensed org) before relying on this.
+// Each TODO marks a spot to double check.
 import WebSocket from 'ws';
 
 export function baseUrl() {
@@ -122,7 +122,7 @@ export async function listTeams(session) {
     orgId = await resolveOrgId(session).catch(() => process.env.WXCC_ORG_ID);
   }
   if (!orgId) {
-    throw new Error('Could not resolve your org (people/me failed and WXCC_ORG_ID is not set as a fallback)');
+    throw new Error('Unauthorized — could not verify your Webex identity. Try signing out and back in.');
   }
   const data = await authedFetch(session, `/organization/${orgId}/v2/team`);
   return (data?.data || []).map((team) => ({ id: team.id, name: team.name || team.id }));
