@@ -502,4 +502,25 @@ export async function subscribeNotifications(session) {
     session.emitter.emit('notification-closed');
   });
   session.liveSocket = ws;
+
+  // Wait for WxCC's own "Welcome" handshake message before returning -- readyState
+  // reaching OPEN only confirms the transport-level WS handshake, not that WxCC's
+  // backend has actually finished registering this subscription. A caller that fires a
+  // request depending on an async reply over this socket (e.g. buddyList) before Welcome
+  // arrives races that registration, and the reply never comes. Falls back to a short
+  // timeout instead of hanging forever, in case the Welcome shape/timing ever differs.
+  await new Promise((resolve) => {
+    const onNotification = (msg) => {
+      if (msg?.type === 'Welcome') {
+        session.emitter.off('raw-notification', onNotification);
+        clearTimeout(fallback);
+        resolve();
+      }
+    };
+    session.emitter.on('raw-notification', onNotification);
+    const fallback = setTimeout(() => {
+      session.emitter.off('raw-notification', onNotification);
+      resolve();
+    }, 4000);
+  });
 }
