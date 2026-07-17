@@ -684,18 +684,33 @@ button.link {
   margin: 16px 0 24px;
 }
 
-.card.call-log {
-  max-width: 380px;
-  text-align: left;
-  max-height: 80vh;
-  max-height: 80dvh;
+.call-log-view {
+  width: 100%;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  gap: 14px;
+  text-align: left;
 }
 
-.card.call-log h2 {
-  text-align: center;
-  margin: 0 0 12px;
+.call-log-view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.call-log-view-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.call-log-close {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 4px;
 }
 
 .call-log-list {

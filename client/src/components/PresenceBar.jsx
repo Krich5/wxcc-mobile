@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
-import { CallLogModal } from './CallLogModal.jsx';
 
 const DASHBOARD_POLL_MS = 15000;
 
@@ -15,12 +14,11 @@ function formatElapsed(totalSeconds) {
   return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function PresenceBar() {
+export function PresenceBar({ onOpenCallLog }) {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
-  const [callLogOpen, setCallLogOpen] = useState(false);
   // The state-change reason (e.g. "Login") only tells us WHAT state we're in; the
   // duration comes from the same WxCC agentSession record the dashboard already reads
   // (real, server-tracked elapsed time -- not a client timer that resets on reload),
@@ -35,36 +33,34 @@ export function PresenceBar() {
       .catch((err) => setNotice(`Couldn't load idle codes: ${err.message}`));
   }, [session.mode]);
 
+  const loadSelf = useCallback(() => {
+    if (session.mode !== 'live') return;
+    api('/api/agent/dashboard')
+      .then(({ self }) => {
+        if (!self) return;
+        setSelfBase({ baseSec: self.durationSec, fetchedAtMs: Date.now() });
+        // Same source of truth as the dashboard's agent list -- reconcile our
+        // optimistic client-side agentState with what WxCC actually reports every
+        // poll, so the two can never drift apart for long. Only Available/Idle are
+        // reconciled here; on-call/ringing/wrap-up are transient call states that
+        // don't correspond to a presence-dropdown option.
+        if (self.state === 'available') {
+          setSession((s) => (s.agentState === 'Available' ? s : { ...s, agentState: 'Available' }));
+        } else if (self.state === 'idle') {
+          const label = self.idleCode && self.idleCode !== '—' ? self.idleCode : self.stateLabel;
+          const next = `Idle: ${label}`;
+          setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
+        }
+      })
+      .catch(() => {});
+  }, [session.mode, setSession]);
+
   useEffect(() => {
     if (session.mode !== 'live') return;
-    let cancelled = false;
-    const load = () => {
-      api('/api/agent/dashboard')
-        .then(({ self }) => {
-          if (cancelled || !self) return;
-          setSelfBase({ baseSec: self.durationSec, fetchedAtMs: Date.now() });
-          // Same source of truth as the dashboard's agent list -- reconcile our
-          // optimistic client-side agentState with what WxCC actually reports every
-          // poll, so the two can never drift apart for long. Only Available/Idle are
-          // reconciled here; on-call/ringing/wrap-up are transient call states that
-          // don't correspond to a presence-dropdown option.
-          if (self.state === 'available') {
-            setSession((s) => (s.agentState === 'Available' ? s : { ...s, agentState: 'Available' }));
-          } else if (self.state === 'idle') {
-            const label = self.idleCode && self.idleCode !== '—' ? self.idleCode : self.stateLabel;
-            const next = `Idle: ${label}`;
-            setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
-          }
-        })
-        .catch(() => {});
-    };
-    load();
-    const interval = setInterval(load, DASHBOARD_POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [session.mode]);
+    loadSelf();
+    const interval = setInterval(loadSelf, DASHBOARD_POLL_MS);
+    return () => clearInterval(interval);
+  }, [session.mode, loadSelf]);
 
   useEffect(() => {
     const tick = setInterval(() => forceTick((n) => n + 1), 1000);
@@ -77,6 +73,11 @@ export function PresenceBar() {
       try {
         await api('/api/agent/state', { method: 'POST', body: JSON.stringify({ state: 'Available' }) });
         setSession((s) => ({ ...s, agentState: 'Available' }));
+        // Reset the ticker immediately rather than waiting up to DASHBOARD_POLL_MS for
+        // the next scheduled poll, then reconcile against the real search-API duration
+        // right away too.
+        setSelfBase({ baseSec: 0, fetchedAtMs: Date.now() });
+        loadSelf();
       } catch (err) {
         setNotice(err.message);
       }
@@ -90,6 +91,8 @@ export function PresenceBar() {
         body: JSON.stringify({ state: 'Idle', auxCodeId: code.id, reason: code.name }),
       });
       setSession((s) => ({ ...s, agentState: `Idle: ${code.name}` }));
+      setSelfBase({ baseSec: 0, fetchedAtMs: Date.now() });
+      loadSelf();
     } catch (err) {
       setNotice(err.message);
     }
@@ -163,18 +166,22 @@ export function PresenceBar() {
                 <span className="side-panel-label">Dial number</span>
                 <span className="side-panel-value">{session.profile?.dialNumber || '—'}</span>
               </div>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenCallLog?.();
+                }}
+              >
+                Call Log
+              </button>
             </div>
-            <button className="secondary" onClick={() => setCallLogOpen(true)}>
-              Call Log
-            </button>
             <button className="secondary" onClick={() => setConfirmSignOut(true)}>
               Sign Out
             </button>
           </div>
         </div>
       )}
-
-      {callLogOpen && <CallLogModal onClose={() => setCallLogOpen(false)} />}
 
       {confirmSignOut && (
         <div className="overlay" onClick={() => setConfirmSignOut(false)}>
