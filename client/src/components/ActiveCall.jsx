@@ -11,7 +11,7 @@ function formatElapsed(totalSeconds) {
   return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function ActiveCall({ call }) {
+export function ActiveCall({ call, onEnded }) {
   const [, forceTick] = useState(0);
   const [onHold, setOnHold] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'consult' | 'transfer' | null
@@ -78,7 +78,12 @@ export function ActiveCall({ call }) {
     if (ok) setOnHold(!onHold);
   };
 
-  const endCall = () => runAction('end');
+  const endCall = async () => {
+    const ok = await runAction('end');
+    // Don't wait for the next poll to notice the call is gone -- the API call
+    // succeeding already IS the confirmation.
+    if (ok) onEnded?.(call.id);
+  };
 
   const togglePendingAction = (action) => {
     setError(null);
@@ -93,13 +98,20 @@ export function ActiveCall({ call }) {
       if (pendingAction === 'consult') {
         setInConsult(true);
         setConsultTo(to);
+      } else if (pendingAction === 'transfer') {
+        // A completed transfer hands the call off entirely -- confirmed the moment this
+        // API call succeeds, no need to wait for the next poll to notice.
+        onEnded?.(call.id);
       }
       setPendingAction(null);
       setDestNumber('');
     }
   };
 
-  const completeConsultTransfer = () => runAction('consult/transfer', { body: JSON.stringify({ to: consultTo }) });
+  const completeConsultTransfer = async () => {
+    const ok = await runAction('consult/transfer', { body: JSON.stringify({ to: consultTo }) });
+    if (ok) onEnded?.(call.id);
+  };
 
   const mergeConsult = async () => {
     const ok = await runAction('consult/conference', { body: JSON.stringify({ to: consultTo }) });

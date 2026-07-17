@@ -15,7 +15,7 @@ export default function App() {
   const { session, loading, notice, setNotice } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [callLogOpen, setCallLogOpen] = useState(false);
-  const { call, endedTaskId, clearEnded } = useActiveCall(session.mode);
+  const { call, endedTaskId, clearEnded, markEnded } = useActiveCall(session.mode);
 
   useEffect(() => {
     hasExistingSubscription()
@@ -42,7 +42,7 @@ export default function App() {
     <div className="app">
       <PresenceBar onOpenCallLog={() => setCallLogOpen(true)} />
       <main className="console">
-        <ActiveCall call={call} />
+        <ActiveCall call={call} onEnded={markEnded} />
         {!task && callLogOpen && <CallLog onClose={() => setCallLogOpen(false)} />}
         {!task && !callLogOpen && (
           <>

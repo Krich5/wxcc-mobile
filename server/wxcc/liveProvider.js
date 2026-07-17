@@ -274,10 +274,8 @@ export async function holdTask(session, taskId) {
 }
 
 export async function unholdTask(session, taskId) {
-  // Not independently confirmed via curl, but /hold (the same resource's companion
-  // endpoint) requires {mediaResourceId: taskId} in its body -- applying the same shape
-  // here rather than leaving unhold guaranteed-broken with the identical "Request body
-  // is missing" error.
+  // Confirmed: POST /v1/tasks/{taskId}/unhold also requires {mediaResourceId: taskId}
+  // in the body, same as /hold.
   return authedFetch(session, `/v1/tasks/${taskId}/unhold`, {
     method: 'POST',
     body: JSON.stringify({ mediaResourceId: taskId }),
