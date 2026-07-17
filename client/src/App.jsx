@@ -10,12 +10,14 @@ import { ActiveCall } from './components/ActiveCall.jsx';
 import { CallLog } from './components/CallLog.jsx';
 import { enableNotifications, hasExistingSubscription } from './lib/push.js';
 import { useActiveCall } from './hooks/useActiveCall.js';
+import { useSelfStatus } from './hooks/useSelfStatus.js';
 
 export default function App() {
   const { session, loading, notice, setNotice } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [callLogOpen, setCallLogOpen] = useState(false);
-  const { call, endedTaskId, clearEnded, markEnded } = useActiveCall(session.mode);
+  const { call, endedTaskId, clearEnded, markEnded, refresh: refreshActiveCall } = useActiveCall(session.mode);
+  const { self, fetchedAtMs, reload: reloadSelf, resetDuration: resetSelfDuration } = useSelfStatus(session.mode);
 
   useEffect(() => {
     hasExistingSubscription()
@@ -40,22 +42,25 @@ export default function App() {
 
   return (
     <div className="app">
-      <PresenceBar onOpenCallLog={() => setCallLogOpen(true)} />
+      <PresenceBar
+        onOpenCallLog={() => setCallLogOpen(true)}
+        self={self}
+        fetchedAtMs={fetchedAtMs}
+        reloadSelf={reloadSelf}
+        resetSelfDuration={resetSelfDuration}
+        notificationsEnabled={notificationsEnabled}
+        onRequestNotifications={requestNotifications}
+      />
       <main className="console">
-        <ActiveCall call={call} onEnded={markEnded} />
+        <ActiveCall
+          call={call}
+          onEnded={markEnded}
+          onActionTaken={refreshActiveCall}
+          self={self}
+          fetchedAtMs={fetchedAtMs}
+        />
         {!task && callLogOpen && <CallLog onClose={() => setCallLogOpen(false)} />}
-        {!task && !callLogOpen && (
-          <>
-            <Dashboard />
-            <div className="idle-panel">
-              {!notificationsEnabled && (
-                <button className="secondary" onClick={requestNotifications}>
-                  Enable notifications
-                </button>
-              )}
-            </div>
-          </>
-        )}
+        {!task && !callLogOpen && <Dashboard />}
         {task?.status === 'connected' && <CallScreen task={task} />}
         {task?.status === 'wrapup' && <WrapUpModal task={task} />}
       </main>

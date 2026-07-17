@@ -11,17 +11,17 @@ function formatElapsed(totalSeconds) {
   return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function ActiveCall({ call, onEnded }) {
+export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) {
   const [, forceTick] = useState(0);
   const [onHold, setOnHold] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'consult' | 'transfer' | null
   const [destNumber, setDestNumber] = useState('');
-  // Set once the initial /consult succeeds -- while true, the agent is talking to the
-  // consulted party (the original call held automatically via holdParticipants) and the
-  // available actions switch to completing that consult (Transfer/Merge/End Consult)
-  // rather than the normal Hold/Consult/Transfer/End row.
+  // Set once the initial /consult succeeds -- while true, the original caller is on hold
+  // (WxCC does this automatically via holdParticipants: true) and the agent is talking
+  // to the consulted party on a separate leg -- shown as two separate cards.
   const [inConsult, setInConsult] = useState(false);
   const [consultTo, setConsultTo] = useState('');
+  const [consultStartedAtMs, setConsultStartedAtMs] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const lastCallIdRef = useRef(null);
@@ -51,19 +51,36 @@ export function ActiveCall({ call, onEnded }) {
       setDestNumber('');
       setInConsult(false);
       setConsultTo('');
+      setConsultStartedAtMs(null);
       setError(null);
     }
   }, [call?.id]);
 
   if (!call) return null;
 
-  const elapsedSec = (Date.now() - call.createdTimeMs) / 1000;
+  // Ringing calls aren't answered through this app (the agent's own phone rings) -- call
+  // controls only make sense once the call is actually engaged (including on hold --
+  // that's still an active call the agent needs Unhold/Transfer/End for, not a reason
+  // to hide the whole control row).
+  const engaged = call.statusLabel === 'Engaged' || call.statusLabel === 'On Hold';
+  // Same source (and same number) as the Agent State roster's own duration for this
+  // agent -- durationSec resets on every state transition (including on/off hold), so
+  // this can't show a different "how long" than the roster does. Falls back to time-
+  // since-created only before the very first self poll lands (e.g. while still ringing).
+  const elapsedSec =
+    engaged && self && fetchedAtMs != null
+      ? self.durationSec + (Date.now() - fetchedAtMs) / 1000
+      : (Date.now() - call.createdTimeMs) / 1000;
+  const consultElapsedSec = consultStartedAtMs ? (Date.now() - consultStartedAtMs) / 1000 : 0;
 
   const runAction = async (path, opts) => {
     setBusy(true);
     setError(null);
     try {
       await api(`/api/agent/tasks/${call.id}/${path}`, { method: 'POST', ...opts });
+      // Re-poll right away instead of waiting up to POLL_MS for the next scheduled
+      // check -- every control here should feel instant, not laggy.
+      onActionTaken?.();
       return true;
     } catch (err) {
       setError(err.message);
@@ -98,6 +115,7 @@ export function ActiveCall({ call, onEnded }) {
       if (pendingAction === 'consult') {
         setInConsult(true);
         setConsultTo(to);
+        setConsultStartedAtMs(Date.now());
       } else if (pendingAction === 'transfer') {
         // A completed transfer hands the call off entirely -- confirmed the moment this
         // API call succeeds, no need to wait for the next poll to notice.
@@ -118,6 +136,7 @@ export function ActiveCall({ call, onEnded }) {
     if (ok) {
       setInConsult(false);
       setConsultTo('');
+      setConsultStartedAtMs(null);
     }
   };
 
@@ -126,14 +145,41 @@ export function ActiveCall({ call, onEnded }) {
     if (ok) {
       setInConsult(false);
       setConsultTo('');
+      setConsultStartedAtMs(null);
     }
   };
 
-  // Ringing calls aren't answered through this app (the agent's own phone rings) -- call
-  // controls only make sense once the call is actually engaged (including on hold --
-  // that's still an active call the agent needs Unhold/Transfer/End for, not a reason
-  // to hide the whole control row).
-  const engaged = call.statusLabel === 'Engaged' || call.statusLabel === 'On Hold';
+  if (inConsult) {
+    return (
+      <div className="active-call-stack">
+        <div className="active-call-card">
+          <p className="active-call-label">On Hold</p>
+          <p className="active-call-number">{call.customerPhone || call.origin || 'Unknown caller'}</p>
+          <p className="active-call-meta">
+            On Hold · {formatElapsed(elapsedSec)}
+            {call.team ? ` · ${call.team}` : ''}
+          </p>
+        </div>
+        <div className="active-call-card">
+          <p className="active-call-label">Consulting</p>
+          <p className="active-call-number">{consultTo}</p>
+          <p className="active-call-meta">Consult · {formatElapsed(consultElapsedSec)}</p>
+          <div className="active-call-actions">
+            <button className="pill" onClick={completeConsultTransfer} disabled={busy}>
+              Transfer
+            </button>
+            <button className="pill" onClick={mergeConsult} disabled={busy}>
+              Merge
+            </button>
+            <button className="pill end-pill" onClick={endConsult} disabled={busy}>
+              End Consult
+            </button>
+          </div>
+          {error && <p className="error">{error}</p>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="active-call-card">
@@ -144,21 +190,7 @@ export function ActiveCall({ call, onEnded }) {
         {call.team ? ` · ${call.team}` : ''}
       </p>
 
-      {engaged && inConsult && (
-        <div className="active-call-actions">
-          <button className="pill" onClick={completeConsultTransfer} disabled={busy}>
-            Transfer
-          </button>
-          <button className="pill" onClick={mergeConsult} disabled={busy}>
-            Merge
-          </button>
-          <button className="pill end-pill" onClick={endConsult} disabled={busy}>
-            End Consult
-          </button>
-        </div>
-      )}
-
-      {engaged && !inConsult && (
+      {engaged && (
         <>
           <div className="active-call-actions">
             <button className="pill" onClick={toggleHold} disabled={busy}>

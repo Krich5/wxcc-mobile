@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
-
-const DASHBOARD_POLL_MS = 15000;
 
 function formatElapsed(totalSeconds) {
   const total = Math.max(0, Math.round(totalSeconds));
@@ -14,17 +12,20 @@ function formatElapsed(totalSeconds) {
   return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function PresenceBar({ onOpenCallLog }) {
+export function PresenceBar({
+  onOpenCallLog,
+  self,
+  fetchedAtMs,
+  reloadSelf,
+  resetSelfDuration,
+  notificationsEnabled,
+  onRequestNotifications,
+}) {
   const { session, setSession, setNotice } = useSession();
   const [idleCodes, setIdleCodes] = useState([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [stateMenuOpen, setStateMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
-  // The state-change reason (e.g. "Login") only tells us WHAT state we're in; the
-  // duration comes from the same WxCC agentSession record the dashboard already reads
-  // (real, server-tracked elapsed time -- not a client timer that resets on reload),
-  // ticked locally between polls.
-  const [selfBase, setSelfBase] = useState(null); // { baseSec, fetchedAtMs }
   const [, forceTick] = useState(0);
 
   useEffect(() => {
@@ -34,34 +35,21 @@ export function PresenceBar({ onOpenCallLog }) {
       .catch((err) => setNotice(`Couldn't load idle codes: ${err.message}`));
   }, [session.mode]);
 
-  const loadSelf = useCallback(() => {
-    if (session.mode !== 'live') return;
-    api('/api/agent/dashboard')
-      .then(({ self }) => {
-        if (!self) return;
-        setSelfBase({ baseSec: self.durationSec, fetchedAtMs: Date.now() });
-        // Same source of truth as the dashboard's agent list -- reconcile our
-        // optimistic client-side agentState with what WxCC actually reports every
-        // poll, so the two can never drift apart for long. Only Available/Idle are
-        // reconciled here; on-call/ringing/wrap-up are transient call states that
-        // don't correspond to a presence-dropdown option.
-        if (self.state === 'available') {
-          setSession((s) => (s.agentState === 'Available' ? s : { ...s, agentState: 'Available' }));
-        } else if (self.state === 'idle') {
-          const label = self.idleCode && self.idleCode !== '—' ? self.idleCode : self.stateLabel;
-          const next = `Idle: ${label}`;
-          setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
-        }
-      })
-      .catch(() => {});
-  }, [session.mode, setSession]);
-
+  // Same source of truth as the dashboard's agent list -- reconcile our optimistic
+  // client-side agentState with what WxCC actually reports every time the shared self
+  // poll updates, so the two can never drift apart for long. Only Available/Idle are
+  // reconciled here; on-call/ringing/wrap-up are transient call states that don't
+  // correspond to a presence-dropdown option.
   useEffect(() => {
-    if (session.mode !== 'live') return;
-    loadSelf();
-    const interval = setInterval(loadSelf, DASHBOARD_POLL_MS);
-    return () => clearInterval(interval);
-  }, [session.mode, loadSelf]);
+    if (!self) return;
+    if (self.state === 'available') {
+      setSession((s) => (s.agentState === 'Available' ? s : { ...s, agentState: 'Available' }));
+    } else if (self.state === 'idle') {
+      const label = self.idleCode && self.idleCode !== '—' ? self.idleCode : self.stateLabel;
+      const next = `Idle: ${label}`;
+      setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
+    }
+  }, [self, setSession]);
 
   useEffect(() => {
     const tick = setInterval(() => forceTick((n) => n + 1), 1000);
@@ -77,13 +65,12 @@ export function PresenceBar({ onOpenCallLog }) {
         setSession((s) => ({ ...s, agentState: 'Available' }));
         // Reset the ticker immediately -- don't reconcile against the real search-API
         // data right away, though: WxCC's own backend has a beat of lag before a state
-        // change we JUST made shows up there, so calling loadSelf() synchronously here
-        // read back the still-stale PREVIOUS state and stomped this optimistic update,
-        // producing a visible flash back to the old value before the next scheduled poll
-        // (DASHBOARD_POLL_MS later) finally caught the real change. A short delay avoids
-        // racing that lag while still confirming much sooner than the full interval.
-        setSelfBase({ baseSec: 0, fetchedAtMs: Date.now() });
-        setTimeout(loadSelf, 3000);
+        // change we JUST made shows up there, so reconciling synchronously here would
+        // read back the still-stale PREVIOUS state and stomp this optimistic update. A
+        // short delay avoids racing that lag while still confirming much sooner than the
+        // full poll interval.
+        resetSelfDuration?.();
+        setTimeout(() => reloadSelf?.(), 3000);
       } catch (err) {
         setNotice(err.message);
       }
@@ -97,15 +84,22 @@ export function PresenceBar({ onOpenCallLog }) {
         body: JSON.stringify({ state: 'Idle', auxCodeId: code.id, reason: code.name }),
       });
       setSession((s) => ({ ...s, agentState: `Idle: ${code.name}` }));
-      setSelfBase({ baseSec: 0, fetchedAtMs: Date.now() });
-      setTimeout(loadSelf, 3000);
+      resetSelfDuration?.();
+      setTimeout(() => reloadSelf?.(), 3000);
     } catch (err) {
       setNotice(err.message);
     }
   };
 
   const logout = async () => {
-    await api('/api/agent/logout', { method: 'POST' });
+    try {
+      await api('/api/agent/logout', { method: 'POST' });
+    } catch {
+      // Non-fatal -- always fall through to reload below. Previously an error here
+      // (thrown by api() on a non-2xx response) would skip the reload entirely, leaving
+      // the UI showing "logged in" even though the server-side WxCC logout had already
+      // gone through -- sign-out must always land back on the login screen.
+    }
     window.location.reload();
   };
 
@@ -122,9 +116,8 @@ export function PresenceBar({ onOpenCallLog }) {
     ? 'Available'
     : matchedCode?.id || (currentIdleName ? `current:${currentIdleName}` : '');
 
-  const elapsed = selfBase
-    ? formatElapsed(selfBase.baseSec + (Date.now() - selfBase.fetchedAtMs) / 1000)
-    : null;
+  const elapsed =
+    self && fetchedAtMs != null ? formatElapsed(self.durationSec + (Date.now() - fetchedAtMs) / 1000) : null;
   // Only the closed button shows elapsed time -- the open list just shows plain state
   // names, since a live-ticking clock frozen inside a dropdown option reads as stale/odd.
   const currentLabel = isAvailable ? 'Available' : matchedCode?.name || currentIdleName || 'Idle';
@@ -198,6 +191,17 @@ export function PresenceBar({ onOpenCallLog }) {
               >
                 Call Log
               </button>
+              {!notificationsEnabled && (
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onRequestNotifications?.();
+                  }}
+                >
+                  Enable notifications
+                </button>
+              )}
             </div>
             <button className="secondary" onClick={() => setConfirmSignOut(true)}>
               Sign Out

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 
 const POLL_MS = 2000;
@@ -16,31 +16,34 @@ export function useActiveCall(mode) {
   // reflect that, so without this a poll landing in that gap would read the call as
   // still active and silently resurrect it, undoing the immediate transition to wrap-up.
   const suppressIdRef = useRef(null);
+  const mountedRef = useRef(true);
+
+  const load = useCallback(() => {
+    if (mode !== 'live') return;
+    api('/api/agent/active-call')
+      .then(({ call: result }) => {
+        if (!mountedRef.current) return;
+        if (suppressIdRef.current && result?.id === suppressIdRef.current) return;
+        suppressIdRef.current = null;
+        if (!result && lastCallIdRef.current) {
+          setEndedTaskId(lastCallIdRef.current);
+        }
+        lastCallIdRef.current = result?.id || null;
+        setCall(result);
+      })
+      .catch(() => {});
+  }, [mode]);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (mode !== 'live') return;
-    let cancelled = false;
-    const load = () => {
-      api('/api/agent/active-call')
-        .then(({ call: result }) => {
-          if (cancelled) return;
-          if (suppressIdRef.current && result?.id === suppressIdRef.current) return;
-          suppressIdRef.current = null;
-          if (!result && lastCallIdRef.current) {
-            setEndedTaskId(lastCallIdRef.current);
-          }
-          lastCallIdRef.current = result?.id || null;
-          setCall(result);
-        })
-        .catch(() => {});
-    };
     load();
     const interval = setInterval(load, POLL_MS);
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
       clearInterval(interval);
     };
-  }, [mode]);
+  }, [mode, load]);
 
   // Called right when an action confirms the call is over, instead of waiting up to
   // POLL_MS for the next poll to notice -- e.g. clicking Transfer/End shouldn't leave
@@ -53,5 +56,5 @@ export function useActiveCall(mode) {
     setEndedTaskId(taskId);
   };
 
-  return { call, endedTaskId, clearEnded: () => setEndedTaskId(null), markEnded };
+  return { call, endedTaskId, clearEnded: () => setEndedTaskId(null), markEnded, refresh: load };
 }
