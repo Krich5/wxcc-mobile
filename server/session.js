@@ -67,10 +67,16 @@ export async function sessionMiddleware(req, res, next) {
   if (!sid || !sessions.has(sid)) {
     sid = crypto.randomUUID();
     sessions.set(sid, createSession(sid));
+    // Matches the wxcc_tokens cookie's lifetime -- sid itself carries no sensitive data
+    // (just an opaque pointer to the in-memory session), so there's no security reason
+    // for it to expire sooner than the tokens it's meant to unlock. An 8h expiry here
+    // meant a sid cookie could go stale mid-shift on its own, independent of any server
+    // restart, forcing the agent through login again even though their Webex tokens
+    // (and the real WxCC agent session) were still perfectly valid.
     res.cookie('sid', sid, {
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: 8 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
   }
   req.session = sessions.get(sid);

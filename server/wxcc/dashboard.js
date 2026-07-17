@@ -210,37 +210,26 @@ export async function getCallHistory(session, { limit = CALL_HISTORY_LIMIT } = {
   }));
 }
 
-function buildSelfSessionQuery(fromMs, toMs, agentId) {
-  // Same agentSession resource as buildSessionQuery/getDashboard, but filtered directly
-  // to this agent -- cheap enough to run on every app load/reload to answer "is this
-  // agent already logged into WxCC right now" without waiting for the full dashboard.
-  return `{
-  agentSession(
-    from: ${Math.floor(fromMs)}
-    to: ${Math.floor(toMs)}
-    filter: { and: [
-      { agentId: { equals: "${agentId}" } }
-      { isActive: { equals: true } }
-    ] }
-  ) {
-    agentSessions {
-      agentId agentName teamId teamName startTime
-      channelInfo { channelType currentState lastActivityTime idleCodeName connectedCount ronaCount }
-    }
-  }
-}`;
-}
-
 export async function checkExistingSession(session) {
   // WxCC itself already knows whether this agent is logged in -- a server restart
   // (which wipes our own in-memory session.profile) shouldn't force them back through
   // the team/dial-number picker and re-run /v2/agents/login (which would reset whatever
   // real state -- Available, mid-call, a custom idle reason -- they were actually in).
+  //
+  // Reuses the CONFIRMED buildSessionQuery shape from getDashboard() below rather than
+  // filtering by agentId directly in the GraphQL query -- an earlier version of this
+  // function added an `agentId: { equals: ... }` filter that was never confirmed as a
+  // valid filter key on this resource, which silently broke this whole check (the query
+  // errored, checkExistingSession threw, and the client fell back to showing the
+  // team/dial picker -- exactly the bug this function exists to fix). Filtering the
+  // agent's own row out in JS afterward, like getDashboard() already does for "self", is
+  // the only part of this shape that's actually confirmed to work.
   const ctx = await resolveAgentContext(session);
   const now = Date.now();
   const fromMs = now - 24 * 60 * 60 * 1000; // a still-open session could have started yesterday
-  const data = await runGraphQL(session, buildSelfSessionQuery(fromMs, now, ctx.agentId));
-  const row = (data?.agentSession?.agentSessions || [])[0];
+  const data = await runGraphQL(session, buildSessionQuery(fromMs, now));
+  const rows = data?.agentSession?.agentSessions || [];
+  const row = rows.find((r) => r.agentId === ctx.agentId);
   if (!row) return null;
   const stateValue = getSessionState(row);
   const bucket = categorizeAgentState(stateValue);

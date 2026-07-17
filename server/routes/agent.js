@@ -119,6 +119,10 @@ router.get('/existing-session', async (req, res) => {
     }
     res.json({ ok: true, alreadyLoggedIn: true, profile: req.session.profile, agentState: req.session.agentState });
   } catch (err) {
+    // A failure here silently degrades to the team/dial-number picker client-side --
+    // log it so that degradation is visible in Railway logs instead of looking like
+    // "already-logged-in detection just isn't working" with no clue why.
+    console.error('[existing-session] check failed:', err.message);
     res.status(502).json({ ok: false, error: err.message });
   }
 });
