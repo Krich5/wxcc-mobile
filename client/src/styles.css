@@ -579,6 +579,12 @@ button.primary:disabled {
   opacity: 0.4;
 }
 
+.pill.end-pill {
+  background: var(--danger);
+  color: white;
+  border-color: var(--danger);
+}
+
 .state-dropdown {
   position: relative;
 }
@@ -701,6 +707,7 @@ button.primary:disabled {
 }
 
 .active-call-card {
+  position: relative;
   margin: 16px 16px 0;
   padding: 14px 16px;
   background: var(--bg-elevated);
@@ -718,36 +725,89 @@ button.primary:disabled {
   letter-spacing: 0.04em;
 }
 
+.active-call-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.active-call-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay-hover);
+  color: var(--success);
+}
+
+.active-call-rec {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: var(--danger);
+}
+
 .active-call-number {
-  margin: 0 0 4px;
-  font-size: 1.2rem;
+  margin: 0 0 2px;
+  font-size: 1.15rem;
   font-weight: 700;
 }
 
 .active-call-meta {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-dim);
-  text-transform: capitalize;
+}
+
+.active-call-fields {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.active-call-fields strong {
+  font-weight: 700;
 }
 
 .active-call-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 14px;
 }
 
-.active-call-actions .pill {
-  flex: 1;
-  min-width: 72px;
-  text-align: center;
+.call-icon-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
-.active-call-actions .pill.end-pill {
+.call-icon-btn.active {
+  background: var(--brand);
+  color: white;
+  border-color: var(--brand);
+}
+
+.call-icon-btn.end {
   background: var(--danger);
   color: white;
   border-color: var(--danger);
+}
+
+.call-icon-btn:disabled {
+  opacity: 0.4;
 }
 
 .active-call-dest {

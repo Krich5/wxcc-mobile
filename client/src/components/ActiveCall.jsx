@@ -1,6 +1,65 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 
+// Cisco's own Momentum Design icon set (momentum.design/icons/*-bold.svg) -- kept as raw
+// path data rather than an icon-library dependency since only these six are needed.
+function HandsetIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="20" height="20" fill="currentColor">
+      <path d="m28.134 21.413-2.806-2.81a3.5 3.5 0 0 0-4.954.006s-1.212 1.234-1.725 1.752a7.3 7.3 0 0 1-7.04-7.049c.516-.513 1.75-1.727 1.755-1.732a3.506 3.506 0 0 0 0-4.956l-2.806-2.81a3.59 3.59 0 0 0-4.967 0l-1.5 1.502C2.066 7.344 1.588 14.443 9.553 22.42c4.28 4.285 8.056 5.857 10.47 6.42.875.209 1.77.318 2.67.324 1.429.1 2.841-.357 3.94-1.276l1.501-1.5a3.523 3.523 0 0 0 0-4.975m-1.33 3.641-1.5 1.503c-.616.616-2.397 1.021-4.854.448-2.175-.508-5.6-1.946-9.566-5.917-7.08-7.091-6.78-13.12-5.463-14.44l1.5-1.502a1.67 1.67 0 0 1 2.306 0l2.806 2.81a1.62 1.62 0 0 1 .006 2.286s-1.534 1.509-1.903 1.88a1.77 1.77 0 0 0-.408 1.315 9.46 9.46 0 0 0 2.683 6.12c2.453 2.458 6.481 3.229 7.425 2.28.37-.37 1.872-1.9 1.874-1.901a1.62 1.62 0 0 1 2.287 0l2.807 2.81a1.636 1.636 0 0 1 0 2.309" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="M10 4a4.004 4.004 0 0 0-4 4v16a4 4 0 0 0 8 0V8a4.004 4.004 0 0 0-4-4m2 20a2 2 0 1 1-4 0V8a2 2 0 1 1 4 0zM22 4a4.004 4.004 0 0 0-4 4v16a4 4 0 1 0 8 0V8a4.004 4.004 0 0 0-4-4m2 20a2 2 0 1 1-4 0V8a2 2 0 1 1 4 0z" />
+    </svg>
+  );
+}
+
+function HeadsetIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="M30 15.008a5.014 5.014 0 0 0-4.187-4.913 9.998 9.998 0 0 0-19.628-.012 4.996 4.996 0 0 0 .818 9.925 1 1 0 0 0 1-1.003L8 12a8 8 0 0 1 16 0v6a8.01 8.01 0 0 1-5.388 7.553 2.986 2.986 0 1 0 .332 2.003 10.03 10.03 0 0 0 6.865-7.643A5.01 5.01 0 0 0 30 15.008M6 17.837a2.992 2.992 0 0 1 0-5.645zM16 28a1 1 0 1 1 0-2 1 1 0 0 1 0 2m10-10.195v-5.602a2.96 2.96 0 0 1 0 5.602" />
+    </svg>
+  );
+}
+
+function NextIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="m29.708 15.293-10-10a1 1 0 0 0-1.414 1.414L26.586 15H3a1 1 0 0 0 0 2h23.586l-8.293 8.293a1 1 0 1 0 1.414 1.414l10-10a1 1 0 0 0 0-1.415" />
+    </svg>
+  );
+}
+
+function RecordPausedIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="M14.269 20.333a2.64 2.64 0 0 1-1.767.666c-.663 0-1.299-.24-1.768-.666a2.17 2.17 0 0 1-.732-1.606v-5.455c0-.603.263-1.18.732-1.607a2.63 2.63 0 0 1 1.768-.666c.662 0 1.298.24 1.767.666.47.426.732 1.004.732 1.607v5.455c0 .602-.264 1.18-.732 1.606m-2.121-7.382a.43.43 0 0 0-.146.32v5.456c0 .12.052.236.146.32a.53.53 0 0 0 .354.134c.132 0 .259-.048.353-.133a.44.44 0 0 0 .146-.321v-5.455a.43.43 0 0 0-.146-.321.53.53 0 0 0-.354-.134.53.53 0 0 0-.353.134M17.733 11.666A2.64 2.64 0 0 1 19.5 11c.662 0 1.298.24 1.767.666S22 12.67 22 13.272v5.455c0 .603-.263 1.18-.732 1.607a2.63 2.63 0 0 1-1.768.665c-.663 0-1.298-.239-1.767-.665A2.17 2.17 0 0 1 17 18.727v-5.455c.001-.602.265-1.18.733-1.606m2.12 7.382a.44.44 0 0 0 .147-.321v-5.455a.44.44 0 0 0-.146-.321.53.53 0 0 0-.354-.134.53.53 0 0 0-.353.134.43.43 0 0 0-.146.32v5.456c0 .12.052.236.146.32a.53.53 0 0 0 .354.134c.132 0 .26-.048.353-.133M8.223 4.36A14 14 0 0 1 16 2a14.016 14.016 0 0 1 14 14A14 14 0 1 1 8.223 4.36m1.11 21.618A12 12 0 0 0 16 28a12.01 12.01 0 0 0 12-12 12 12 0 1 0-18.666 9.978" />
+    </svg>
+  );
+}
+
+function CancelIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="m17.414 16 8.293-8.293a1 1 0 0 0-1.414-1.414L16 14.586 7.707 6.293a1 1 0 1 0-1.414 1.414L14.586 16l-8.293 8.293a1 1 0 0 0 1.414 1.414L16 17.414l8.293 8.293a1 1 0 0 0 1.414-1.414z" />
+    </svg>
+  );
+}
+
+function RecordingDot() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="8" cy="8" r="6.5" />
+      <circle cx="8" cy="8" r="3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 function formatElapsed(totalSeconds) {
   const total = Math.max(0, Math.round(totalSeconds));
   const hrs = Math.floor(total / 3600);
@@ -262,17 +321,26 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     return (
       <div className="active-call-stack">
         <div className="active-call-card">
-          <p className="active-call-label">On Hold</p>
-          <p className="active-call-number">{call.customerPhone || call.origin || 'Unknown caller'}</p>
-          <p className="active-call-meta">
-            On Hold · {formatElapsed(elapsedSec)}
-            {call.team ? ` · ${call.team}` : ''}
-          </p>
+          <div className="active-call-header">
+            <div className="active-call-icon">
+              <HandsetIcon />
+            </div>
+            <div>
+              <p className="active-call-number">{call.customerPhone || call.origin || 'Unknown caller'}</p>
+              <p className="active-call-meta">On Hold - {formatElapsed(elapsedSec)}</p>
+            </div>
+          </div>
         </div>
         <div className="active-call-card">
-          <p className="active-call-label">Consulting</p>
-          <p className="active-call-number">{consultLabel}</p>
-          <p className="active-call-meta">Consult · {formatElapsed(consultElapsedSec)}</p>
+          <div className="active-call-header">
+            <div className="active-call-icon">
+              <HandsetIcon />
+            </div>
+            <div>
+              <p className="active-call-number">{consultLabel}</p>
+              <p className="active-call-meta">Consult - {formatElapsed(consultElapsedSec)}</p>
+            </div>
+          </div>
           <div className="active-call-actions">
             <button className="pill" onClick={completeConsultTransfer} disabled={busy}>
               Transfer
@@ -292,39 +360,87 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
 
   return (
     <div className="active-call-card">
-      <p className="active-call-label">{call.statusLabel}</p>
-      <p className="active-call-number">{call.customerPhone || call.origin || 'Unknown caller'}</p>
-      <p className="active-call-meta">
-        {call.statusLabel} · {formatElapsed(elapsedSec)}
-        {call.team ? ` · ${call.team}` : ''}
-      </p>
+      {engaged && (
+        <span className="active-call-rec" title="Recording">
+          <RecordingDot />
+        </span>
+      )}
+      <div className="active-call-header">
+        <div className="active-call-icon">
+          <HandsetIcon />
+        </div>
+        <div>
+          <p className="active-call-number">{call.customerPhone || call.origin || 'Unknown caller'}</p>
+          <p className="active-call-meta">
+            {call.statusLabel} - {formatElapsed(elapsedSec)}
+          </p>
+        </div>
+      </div>
 
       {engaged && (
         <>
           <div className="active-call-actions">
-            <button className="pill" onClick={toggleHold} disabled={busy}>
-              {onHold ? 'Unhold' : 'Hold'}
-            </button>
-            <button className="pill" onClick={toggleRecording} disabled={busy}>
-              {recordingPaused ? 'Resume Recording' : 'Pause Recording'}
+            <button
+              type="button"
+              className="call-icon-btn"
+              onClick={toggleHold}
+              disabled={busy}
+              aria-label={onHold ? 'Unhold' : 'Hold'}
+              title={onHold ? 'Unhold' : 'Hold'}
+            >
+              <PauseIcon />
             </button>
             <button
-              className={`pill ${pendingAction === 'consult' ? 'active' : ''}`}
+              type="button"
+              className={`call-icon-btn ${pendingAction === 'consult' ? 'active' : ''}`}
               onClick={() => togglePendingAction('consult')}
               disabled={busy}
+              aria-label="Consult"
+              title="Consult"
             >
-              Consult
+              <HeadsetIcon />
             </button>
             <button
-              className={`pill ${pendingAction === 'transfer' ? 'active' : ''}`}
+              type="button"
+              className={`call-icon-btn ${pendingAction === 'transfer' ? 'active' : ''}`}
               onClick={() => togglePendingAction('transfer')}
               disabled={busy}
+              aria-label="Transfer"
+              title="Transfer"
             >
-              Transfer
+              <NextIcon />
             </button>
-            <button className="pill end-pill" onClick={endCall} disabled={busy}>
-              End
+            <button
+              type="button"
+              className="call-icon-btn"
+              onClick={toggleRecording}
+              disabled={busy}
+              aria-label={recordingPaused ? 'Resume Recording' : 'Pause Recording'}
+              title={recordingPaused ? 'Resume Recording' : 'Pause Recording'}
+            >
+              <RecordPausedIcon />
             </button>
+            <button
+              type="button"
+              className="call-icon-btn end"
+              onClick={endCall}
+              disabled={busy}
+              aria-label="End"
+              title="End"
+            >
+              <CancelIcon />
+            </button>
+          </div>
+
+          <div className="active-call-fields">
+            {call.team && (
+              <p>
+                <strong>Queue:</strong> {call.team}
+              </p>
+            )}
+            <p>
+              <strong>Phone Number:</strong> {call.customerPhone || call.origin || 'Unknown caller'}
+            </p>
           </div>
 
           {pendingAction && (
