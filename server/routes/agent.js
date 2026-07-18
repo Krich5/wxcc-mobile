@@ -288,6 +288,21 @@ router.post('/simulate-task', (req, res) => {
   }
 });
 
+router.post('/outdial', async (req, res) => {
+  const { destination } = req.body || {};
+  if (!destination) return res.status(400).json({ ok: false, error: 'Destination is required' });
+  try {
+    // Unlike the inbound flow, ActiveCall doesn't need this task pushed into
+    // session.currentTask -- useActiveCall's own poll (getActiveCall, via taskDetails)
+    // picks up any active task owned by this agent regardless of how it started, the
+    // same way it already does for calls answered through the inbound flow.
+    const task = await providerFor(req.session).startOutdial(req.session, { destination });
+    res.json({ ok: true, task });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
 router.post('/tasks/:id/answer', async (req, res) => {
   try {
     const data = await providerFor(req.session).answerTask(req.session, req.params.id);

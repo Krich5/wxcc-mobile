@@ -427,6 +427,33 @@ export async function setState(session, state, { auxCodeId, reason } = {}) {
   return data;
 }
 
+export async function startOutdial(session, { destination }) {
+  // Confirmed via a live HAR capture of Cisco's own "EPIC" outdial widget: POST
+  // /v1/tasks/ (note the trailing slash) is the only place in this whole file that
+  // CREATES a task rather than acting on an existing one -- every other tasks/{id}/...
+  // endpoint here assumes the task already exists (via the inbound ContactOffered
+  // notification). No ANI/caller-ID field in the request body at all; it's resolved
+  // server-side from entryPointId, which comes from this agent's OWN profile
+  // (outdialEntryPointId) rather than anything the agent picks per call.
+  const profile = await loadAgentProfile(session);
+  const entryPointId = profile?.outdialEntryPointId;
+  if (!entryPointId) {
+    throw new Error('Outbound calling is not enabled on your agent profile (no outdial entry point configured)');
+  }
+  const data = await authedFetch(session, '/v1/tasks/', {
+    method: 'POST',
+    body: JSON.stringify({
+      destination,
+      entryPointId,
+      direction: 'OUTBOUND',
+      attributes: {},
+      mediaType: 'telephony',
+      outboundType: 'OUTDIAL',
+    }),
+  });
+  return data?.data || data;
+}
+
 export async function answerTask(session, taskId) {
   // TODO verify against the Call Control REST APIs (accept/answer contact).
   const data = await authedFetch(session, `/v2/agents/contact/${taskId}/accept`, { method: 'POST' });

@@ -37,6 +37,23 @@ export function simulateIncomingTask(session) {
   return task;
 }
 
+export function startOutdial(session, { destination }) {
+  if (session.currentTask) {
+    throw new Error('A task is already in progress');
+  }
+  const task = {
+    id: crypto.randomUUID(),
+    channel: 'telephony',
+    ani: destination || '+1 555 0100',
+    queue: 'Outbound',
+    status: 'connected',
+    offeredAt: Date.now(),
+  };
+  session.currentTask = task;
+  session.emitter.emit('task:connected', task);
+  return task;
+}
+
 export function answerTask(session, taskId) {
   const task = session.currentTask;
   if (!task || task.id !== taskId) throw new Error('No matching task');

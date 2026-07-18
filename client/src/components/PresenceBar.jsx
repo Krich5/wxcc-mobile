@@ -5,6 +5,7 @@ import { APP_VERSION } from '../version.js';
 import { formatElapsed } from '../lib/time.js';
 import { applyTheme, getStoredTheme } from '../lib/theme.js';
 import { ProfileSettingsModal } from './ProfileSettingsModal.jsx';
+import { OutdialModal } from './OutdialModal.jsx';
 
 function SunIcon() {
   return (
@@ -52,6 +53,7 @@ export function PresenceBar({
   fetchedAtMs,
   reloadSelf,
   resetSelfDuration,
+  refreshActiveCall,
   notificationsEnabled,
   onRequestNotifications,
 }) {
@@ -61,6 +63,7 @@ export function PresenceBar({
   const [stateMenuOpen, setStateMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
+  const [outdialOpen, setOutdialOpen] = useState(false);
   const [, forceTick] = useState(0);
   const [branding, setBranding] = useState(null); // { appTitle, logo } from the team's desktop layout
   const [logoFailed, setLogoFailed] = useState(false);
@@ -407,6 +410,15 @@ export function PresenceBar({
               >
                 Call Log
               </button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setOutdialOpen(true);
+                }}
+              >
+                New Call
+              </button>
               {!notificationsEnabled && (
                 <button
                   className="secondary"
@@ -461,6 +473,9 @@ export function PresenceBar({
       )}
 
       {profileSettingsOpen && <ProfileSettingsModal onClose={() => setProfileSettingsOpen(false)} />}
+      {outdialOpen && (
+        <OutdialModal onClose={() => setOutdialOpen(false)} onActionTaken={refreshActiveCall} />
+      )}
     </>
   );
 }

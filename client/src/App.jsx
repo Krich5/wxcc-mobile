@@ -63,6 +63,7 @@ export default function App() {
         fetchedAtMs={fetchedAtMs}
         reloadSelf={reloadSelf}
         resetSelfDuration={resetSelfDuration}
+        refreshActiveCall={refreshActiveCall}
         notificationsEnabled={notificationsEnabled}
         onRequestNotifications={requestNotifications}
       />
