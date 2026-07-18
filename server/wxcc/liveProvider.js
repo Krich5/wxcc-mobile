@@ -264,8 +264,38 @@ export async function getBuddyAgents(session, { state } = {}) {
   return { agents, raw };
 }
 
+async function listAllAuxiliaryCodes(session) {
+  // Unfiltered on purpose: the filter syntax this endpoint accepts for workTypeCode
+  // isn't confirmed, whereas the plain id=in=(...) filter used elsewhere IS -- fetching
+  // everything and filtering by workTypeCode in JS below avoids relying on a guess.
+  // Paginated defensively (page/pageSize per this org's own meta.links.self shape,
+  // confirmed via the /v2/team response) since an org-wide code list isn't bounded the
+  // way a single agent-profile's handful of IDs is.
+  const ctx = await resolveAgentContext(session);
+  const all = [];
+  let page = 0;
+  for (let i = 0; i < 20; i += 1) {
+    const data = await authedFetch(session, `/organization/${ctx.orgId}/v2/auxiliary-code?page=${page}&pageSize=100`);
+    all.push(...(data?.data || []));
+    const totalPages = data?.meta?.totalPages || 1;
+    page += 1;
+    if (page >= totalPages) break;
+  }
+  return all;
+}
+
 export async function getIdleCodes(session) {
   const profile = await loadAgentProfile(session);
+  // Confirmed: when a desktop profile's accessIdleCode is "ALL" rather than a specific
+  // list, profile.idleCodes doesn't carry the actual set of codes the agent should see --
+  // the real list has to come from every org-wide auxiliary code whose workTypeCode is
+  // IDLE_CODE, not just the ones named on this one profile.
+  if (profile?.accessIdleCode === 'ALL') {
+    const all = await listAllAuxiliaryCodes(session);
+    return all
+      .filter((c) => c.workTypeCode === 'IDLE_CODE')
+      .map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
+  }
   return resolveCodeNames(session, profile?.idleCodes);
 }
 
