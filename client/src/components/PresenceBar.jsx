@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 import { APP_VERSION } from '../version.js';
@@ -65,12 +65,26 @@ export function PresenceBar({
   const [identity, setIdentity] = useState(null); // { displayName, avatar } from Webex's own /v1/people/me
   const [avatarFailed, setAvatarFailed] = useState(false);
   const [theme, setTheme] = useState(getStoredTheme);
+  const headerRef = useRef(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
 
   const selectTheme = (next) => {
     if (next === theme) return;
     applyTheme(next);
     setTheme(next);
   };
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    // Measured rather than a fixed pixel guess -- the header's real height depends on the
+    // safe-area inset and content, so the menu (anchored to sit right below it, not
+    // covering it) needs the actual rendered value, not an assumption.
+    const update = () => setHeaderHeight(headerRef.current.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(headerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -216,7 +230,7 @@ export function PresenceBar({
 
   return (
     <>
-      <header className="presence-bar">
+      <header className="presence-bar" ref={headerRef}>
         <div className="presence-bar-team">
           <img
             className="presence-bar-logo"
@@ -260,7 +274,11 @@ export function PresenceBar({
               </>
             )}
           </div>
-          <button className="hamburger" onClick={() => setMenuOpen(true)} aria-label="Menu">
+          <button
+            className={`hamburger ${menuOpen ? 'open' : ''}`}
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={menuOpen ? 'Close menu' : 'Menu'}
+          >
             <span />
             <span />
             <span />
@@ -269,11 +287,8 @@ export function PresenceBar({
       </header>
 
       {menuOpen && (
-        <div className="side-panel-overlay" onClick={() => setMenuOpen(false)}>
+        <div className="side-panel-overlay" style={{ top: headerHeight }} onClick={() => setMenuOpen(false)}>
           <div className="side-panel" onClick={(e) => e.stopPropagation()}>
-            <button className="side-panel-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">
-              &times;
-            </button>
             <div className="side-panel-signout-row">
               <button className="side-panel-signout" onClick={() => setConfirmSignOut(true)}>
                 <SignOutIcon /> Sign Out

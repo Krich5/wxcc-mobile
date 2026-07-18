@@ -362,13 +362,30 @@ button.primary:disabled {
   height: 2px;
   background: var(--text);
   border-radius: 2px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+/* Morphs the three bars into an X while the menu is open -- 6px is the line-to-line
+   center distance (2px line height + 4px gap), so the outer two rotate onto the middle
+   line's position exactly instead of just approximating an X. */
+.hamburger.open span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
 }
 
 .side-panel-overlay {
   position: fixed;
-  inset: 0;
-  height: 100vh;
-  height: 100dvh;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(6, 10, 20, 0.6);
   z-index: 20;
   display: flex;
@@ -378,15 +395,18 @@ button.primary:disabled {
 .side-panel {
   width: 78%;
   max-width: 300px;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   background: var(--bg-elevated);
   border-left: 1px solid var(--border);
   padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
-  padding-top: calc(24px + env(safe-area-inset-top));
   display: flex;
   flex-direction: column;
   animation: side-panel-slide-in 0.2s ease-out;
+  /* The overlay is now anchored below the header (see the inline `top` style set from
+     the header's measured height) rather than covering it, so without a shadow the panel
+     -- especially in light mode, where it's the same near-white as the page behind it --
+     had no visual edge separating it from the content it's sitting on top of. */
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
 }
 
 @keyframes side-panel-slide-in {
@@ -396,16 +416,6 @@ button.primary:disabled {
   to {
     transform: translateX(0);
   }
-}
-
-.side-panel-close {
-  align-self: flex-end;
-  background: none;
-  border: none;
-  color: var(--text-dim);
-  font-size: 1.5rem;
-  line-height: 1;
-  padding: 4px;
 }
 
 .side-panel-signout-row {
