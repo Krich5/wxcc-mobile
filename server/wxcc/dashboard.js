@@ -101,6 +101,7 @@ function buildSessionQuery(fromMs, toMs) {
   ) {
     agentSessions {
       agentId agentName teamId teamName startTime
+      agentSessionId state endTime agentSignOutReason
       channelInfo { channelType currentState lastActivityTime idleCodeName connectedCount ronaCount idleDuration }
     }
   }
@@ -241,7 +242,37 @@ export async function checkExistingSession(session) {
     state: bucket,
     stateLabel: getStateBadgeLabel(stateValue),
     idleCode: bucket === 'idle' ? telCh?.idleCodeName || null : null,
+    // The row's OWN agentSessionId, not to be confused with `state`/`bucket` above (this
+    // agent's Available/Idle/etc. presence) -- see rememberMySessionId()/
+    // isMySessionStillActive() below, which use this to detect a DIFFERENT device
+    // signing in as this same agent (WxCC closes out the superseded session's row, but a
+    // lookup keyed on agentId alone would just start matching the NEW device's row and
+    // never notice the takeover).
+    agentSessionId: row.agentSessionId || null,
   };
+}
+
+export async function rememberMySessionId(session) {
+  // Called right after a successful login (fresh or "already logged in" fast-path) --
+  // captures which of this agentId's session rows is actually THIS device's, while
+  // there's no conflict yet to make that ambiguous.
+  const existing = await checkExistingSession(session);
+  if (existing?.agentSessionId) session.wxccAgentSessionId = existing.agentSessionId;
+}
+
+export async function isMySessionStillActive(session) {
+  // Unlike checkExistingSession() (which just matches on agentId, and so would happily
+  // start reporting a DIFFERENT device's now-active session as "you're still logged in"),
+  // this asks specifically about the one agentSessionId we captured at our own login --
+  // the only way to actually detect "a different device took over my agent identity."
+  if (!session.wxccAgentSessionId) return true; // nothing captured yet -- don't false-positive
+  const ctx = await resolveAgentContext(session);
+  const now = Date.now();
+  const fromMs = now - 24 * 60 * 60 * 1000;
+  const data = await runGraphQL(session, buildSessionQuery(fromMs, now));
+  const rows = data?.agentSession?.agentSessions || [];
+  const mine = rows.find((r) => r.agentSessionId === session.wxccAgentSessionId);
+  return !!mine && mine.state !== 'logged_out';
 }
 
 function getCallStatusLabel(rawStatus) {

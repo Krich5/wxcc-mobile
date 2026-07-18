@@ -329,6 +329,10 @@ button.primary:disabled {
   height: 28px;
   border-radius: 6px;
   flex-shrink: 0;
+  /* The team-branding logo (client/src/components/PresenceBar.jsx's `branding.logo`) isn't
+     guaranteed to be square like the app's own default icon -- without this, a non-square
+     image gets stretched to fill the box instead of staying proportional. */
+  object-fit: contain;
 }
 
 .presence-bar-actions {

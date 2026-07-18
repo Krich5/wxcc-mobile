@@ -6,4 +6,4 @@
 //   Z (patch, e.g. 1.0.0 -> 1.0.1): small fixes/tweaks
 //   Y (minor, e.g. 1.0.1 -> 1.1.0): larger changes (a real feature, a meaningful fix)
 //   X (major, e.g. 1.1.0 -> 2.0.0): big changes
-export const APP_VERSION = '1.10.0';
+export const APP_VERSION = '1.11.0';

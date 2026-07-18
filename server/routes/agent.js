@@ -1,7 +1,14 @@
 import express from 'express';
 import * as mock from '../wxcc/mockProvider.js';
 import * as live from '../wxcc/liveProvider.js';
-import { getDashboard, getActiveCall, getCallHistory, checkExistingSession } from '../wxcc/dashboard.js';
+import {
+  getDashboard,
+  getActiveCall,
+  getCallHistory,
+  checkExistingSession,
+  rememberMySessionId,
+  isMySessionStillActive,
+} from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 import { revokeWebexTokens } from './auth.js';
 
@@ -39,6 +46,13 @@ router.post('/login', async (req, res) => {
         }
       } catch (err) {
         presenceError = err.message;
+      }
+      // Best-effort, non-fatal: captures which agentSession row is THIS device's while
+      // there's no conflict yet to make that ambiguous -- see isMySessionStillActive().
+      try {
+        await rememberMySessionId(req.session);
+      } catch {
+        // best-effort
       }
     }
     res.json({
@@ -134,10 +148,24 @@ router.get('/address-book', async (req, res) => {
 router.get('/existing-session', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, alreadyLoggedIn: false });
   try {
+    // If we already know which agentSessionId is ours, this call is almost certainly the
+    // periodic reality-check (SessionContext's poll), not the initial bootstrap --
+    // checkExistingSession() below matches purely on agentId, so once a DIFFERENT device
+    // logs in as this same agent, it would happily start reporting THAT session as "still
+    // logged in" (WxCC's own "Multiple Sign In" takeover). Checking our own remembered
+    // agentSessionId specifically is the only way to catch a takeover instead of just
+    // re-confirming someone (anyone) is currently logged in as this agent.
+    if (req.session.wxccAgentSessionId) {
+      const stillMine = await isMySessionStillActive(req.session);
+      if (!stillMine) return res.json({ ok: true, alreadyLoggedIn: false });
+    }
     const existing = await checkExistingSession(req.session);
     if (!existing) return res.json({ ok: true, alreadyLoggedIn: false });
     const dialNumber = await live.getDefaultDialNumber(req.session);
     req.session.profile = { teamId: existing.teamId, teamName: existing.teamName, dialNumber };
+    if (!req.session.wxccAgentSessionId && existing.agentSessionId) {
+      req.session.wxccAgentSessionId = existing.agentSessionId;
+    }
     if (existing.state === 'available') {
       req.session.agentState = 'Available';
     } else if (existing.state === 'idle') {
