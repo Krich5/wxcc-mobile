@@ -614,6 +614,8 @@ button.primary:disabled {
 }
 
 .state-dropdown-list li {
+  display: flex;
+  align-items: center;
   padding: 10px 12px;
   border-radius: 8px;
   font-size: 0.9rem;
@@ -625,9 +627,36 @@ button.primary:disabled {
   background: var(--overlay-hover);
 }
 
+/* Bold marks the current selection -- color stays reserved for the available/idle
+   meaning below, matching Cisco's own always-colored convention, so selection and
+   presence status are never conflated into a single color swap. */
 .state-dropdown-list li.active {
-  color: var(--brand);
   font-weight: 600;
+}
+
+.state-dropdown-list li.is-available {
+  color: var(--success);
+}
+
+.state-dropdown-list li.is-idle {
+  color: var(--danger);
+}
+
+.state-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.state-dot-available {
+  background: var(--success);
+}
+
+.state-dot-idle {
+  background: var(--danger);
 }
 
 .active-call-stack {

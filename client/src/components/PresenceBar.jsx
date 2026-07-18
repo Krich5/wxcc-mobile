@@ -259,14 +259,25 @@ export function PresenceBar({
                 <div className="state-dropdown-overlay" onClick={() => setStateMenuOpen(false)} />
                 <ul className="state-dropdown-list">
                   <li
-                    className={selectedValue === 'Available' ? 'active' : ''}
+                    className={`is-available ${selectedValue === 'Available' ? 'active' : ''}`}
                     onClick={() => applyState('Available')}
                   >
+                    <span className="state-dot state-dot-available" />
                     Available
                   </li>
-                  {currentIdleName && !matchedCode && <li className="active">{currentIdleName}</li>}
+                  {currentIdleName && !matchedCode && (
+                    <li className="is-idle active">
+                      <span className="state-dot state-dot-idle" />
+                      {currentIdleName}
+                    </li>
+                  )}
                   {idleCodes.map((c) => (
-                    <li key={c.id} className={selectedValue === c.id ? 'active' : ''} onClick={() => applyState(c.id)}>
+                    <li
+                      key={c.id}
+                      className={`is-idle ${selectedValue === c.id ? 'active' : ''}`}
+                      onClick={() => applyState(c.id)}
+                    >
+                      <span className="state-dot state-dot-idle" />
                       {c.name}
                     </li>
                   ))}

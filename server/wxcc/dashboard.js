@@ -508,20 +508,36 @@ function getSessionDurationSeconds(agentSession) {
   return Math.max(0, Math.round((Date.now() - ts) / 1000));
 }
 
-// Cumulative time in the Idle (aux) state overall -- distinct from getSessionDurationSeconds
-// above, which is time in the CURRENT reason only and resets on every idle-code switch.
-// channelInfo.idleDuration comes back in milliseconds and (per WxCC's own metrics catalog)
-// is REPLICATED identically across every channel slot on a multi-channel agent, not
-// channel-specific -- reading it off exactly one channel (telephony, same as everywhere
-// else in this file) avoids the ~channel-count over-count that summing would cause.
-function getTotalIdleSeconds(agentSession) {
-  const channels = Array.isArray(agentSession?.channelInfo)
-    ? agentSession.channelInfo
-    : [agentSession?.channelInfo].filter(Boolean);
-  const telCh = channels.find((c) => c?.channelType === 'telephony');
-  const ms = Number(telCh?.idleDuration);
-  if (!ms || Number.isNaN(ms)) return 0;
-  return Math.max(0, Math.round(ms / 1000));
+// Time idle since the agent's LAST Available -> Idle transition -- distinct from
+// getSessionDurationSeconds above, which is time in the CURRENT reason only and resets on
+// every idle-code switch (Lunch -> Meeting resets that, but this keeps counting through
+// it, only resetting once the agent actually goes Available again).
+//
+// channelInfo.idleDuration (WxCC's own field, confirmed via the metrics catalog) turned
+// out NOT to mean this -- live testing showed it keeps accumulating across the entire
+// login session regardless of Available/Idle toggles in between, more like "total idle
+// time all shift" than "current idle stretch". There's no WxCC field for the latter, so
+// this tracks it ourselves: a module-level map (deliberately not per-viewer-session,
+// since "when did THIS agent's current idle stretch start" is a property of the agent,
+// not of whoever happens to be looking at the roster) noting each agentId's last-seen
+// bucket and when it last flipped INTO idle. Approximate by nature of being poll-based
+// (a same-poll-interval Available blip could be missed), and resets to 0 on every server
+// restart since it's in-memory -- both accepted trade-offs already made elsewhere in this
+// app's session/duration handling.
+const idleStretchStarts = new Map(); // agentId -> { bucket, sinceMs }
+
+function trackIdleStretchSeconds(agentId, bucket) {
+  const now = Date.now();
+  const prev = idleStretchStarts.get(agentId);
+  if (bucket !== 'idle') {
+    idleStretchStarts.set(agentId, { bucket, sinceMs: now });
+    return null;
+  }
+  if (!prev || prev.bucket !== 'idle') {
+    idleStretchStarts.set(agentId, { bucket: 'idle', sinceMs: now });
+    return 0;
+  }
+  return Math.max(0, Math.round((now - prev.sinceMs) / 1000));
 }
 
 function startOfToday() {
@@ -613,14 +629,15 @@ export async function getDashboard(session) {
     stateCounts[bucket] = (stateCounts[bucket] || 0) + 1;
     const channels = Array.isArray(s?.channelInfo) ? s.channelInfo : [s?.channelInfo].filter(Boolean);
     const telCh = channels.find((c) => c?.channelType === 'telephony');
+    const rowId = s?.agentId || `${s?.agentName}-${s?.teamId}`;
     return {
-      id: s?.agentId || `${s?.agentName}-${s?.teamId}`,
+      id: rowId,
       team: teamNameById.get(s?.teamId) || s?.teamName || '—',
       agent: s?.agentName || '—',
       state: bucket,
       stateLabel: getStateBadgeLabel(stateValue),
       durationSec: getSessionDurationSeconds(s),
-      totalIdleSec: bucket === 'idle' ? getTotalIdleSeconds(s) : null,
+      totalIdleSec: trackIdleStretchSeconds(rowId, bucket),
       idleCode: bucket === 'idle' ? telCh?.idleCodeName || '—' : '—',
       handled: telCh?.connectedCount ?? '—',
       rona: telCh?.ronaCount ?? '—',
