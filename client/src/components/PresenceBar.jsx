@@ -428,15 +428,6 @@ export function PresenceBar({
               >
                 Call Log
               </button>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setMenuOpen(false);
-                  setOutdialOpen(true);
-                }}
-              >
-                New Call
-              </button>
               {!notificationsEnabled && (
                 <button
                   className="secondary"

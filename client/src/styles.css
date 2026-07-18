@@ -348,10 +348,9 @@ button.primary:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--brand);
-  color: #fff;
+  background: transparent;
+  color: var(--text);
   border: none;
-  border-radius: 50%;
   flex-shrink: 0;
   padding: 0;
 }
