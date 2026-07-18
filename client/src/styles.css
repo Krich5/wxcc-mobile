@@ -627,19 +627,8 @@ button.primary:disabled {
   background: var(--overlay-hover);
 }
 
-/* Bold marks the current selection -- color stays reserved for the available/idle
-   meaning below, matching Cisco's own always-colored convention, so selection and
-   presence status are never conflated into a single color swap. */
 .state-dropdown-list li.active {
   font-weight: 600;
-}
-
-.state-dropdown-list li.is-available {
-  color: var(--success);
-}
-
-.state-dropdown-list li.is-idle {
-  color: var(--danger);
 }
 
 .state-dot {

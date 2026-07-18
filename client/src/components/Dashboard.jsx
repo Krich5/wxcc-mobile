@@ -86,16 +86,15 @@ export function Dashboard({ data, error, fetchedAtMs }) {
         {agents.length > 0 ? (
           <div className="agent-cards">
             {agents.map((a) => {
-              // Ticked client-side from the same raw durationSec/totalIdleSec + fetchedAtMs
-              // the header pill uses (both now come from the one shared dashboard poll) --
-              // this is the only way a roster row can never show a different number than
-              // the header for the signed-in agent's own row, even between polls.
+              // Ticked client-side from the same raw durationSec + fetchedAtMs the header
+              // pill uses (both now come from the one shared dashboard poll) -- this is the
+              // only way a roster row can never show a different number than the header for
+              // the signed-in agent's own row, even between polls. Just the current-reason
+              // duration here, deliberately -- the header pill is the only place that also
+              // shows total idle time, to keep the roster from getting cluttered with a
+              // second number per row for every agent on the team.
               const elapsedSinceFetch = fetchedAtMs != null ? (Date.now() - fetchedAtMs) / 1000 : 0;
               const duration = formatElapsed(a.durationSec + elapsedSinceFetch);
-              // Time in THIS reason (above) resets on every idle-code switch; total idle
-              // time (below) is cumulative across the whole idle stretch -- only meaningful
-              // while actually idle, mirroring Cisco's own supervisor Team Performance view.
-              const totalIdle = a.totalIdleSec != null ? formatElapsed(a.totalIdleSec + elapsedSinceFetch) : null;
               return (
                 <div key={a.id} className="agent-card">
                   <div className="agent-card-row">
@@ -108,11 +107,6 @@ export function Dashboard({ data, error, fetchedAtMs }) {
                     <span>Handled {a.handled}</span>
                     <span>RONA {a.rona}</span>
                   </div>
-                  {totalIdle && (
-                    <div className="agent-card-row agent-card-meta">
-                      <span>Total idle: {totalIdle}</span>
-                    </div>
-                  )}
                 </div>
               );
             })}
