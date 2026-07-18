@@ -32,9 +32,30 @@ export function PresenceBar({
 
   useEffect(() => {
     if (session.mode !== 'live') return;
-    api('/api/agent/idle-codes')
-      .then(({ codes }) => setIdleCodes(codes))
-      .catch((err) => setNotice(`Couldn't load idle codes: ${err.message}`));
+    let cancelled = false;
+    // Retries a few times before giving up: idle-codes depends on resolveAgentContext()'s
+    // full people/me -> by-ci-user-id chain, which isn't restored from the session cookie
+    // after a server restart -- the "already logged in" fast path skips the full re-login,
+    // so this can be the first thing to actually re-resolve that chain, and a fetch landing
+    // right at that cold-start moment can transiently fail before it settles.
+    const load = (attempt = 0) => {
+      api('/api/agent/idle-codes')
+        .then(({ codes }) => {
+          if (!cancelled) setIdleCodes(codes);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          if (attempt < 2) {
+            setTimeout(() => load(attempt + 1), 2000);
+          } else {
+            setNotice(`Couldn't load idle codes: ${err.message}`);
+          }
+        });
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [session.mode]);
 
   // Same source of truth as the dashboard's agent list -- reconcile our optimistic

@@ -203,6 +203,12 @@ router.get('/idle-codes', async (req, res) => {
     const codes = await live.getIdleCodes(req.session);
     res.json({ ok: true, codes });
   } catch (err) {
+    // Logged (unlike most other routes) because this has no fallback path the way
+    // listTeams does -- idle codes are inherently tied to this agent's specific
+    // agent-profile, so there's no org-wide list to fall back to. The client retries a
+    // couple of times on its own, but if it's still failing, this is the only place
+    // that says why.
+    console.error('[idle-codes] failed:', err.message);
     res.status(502).json({ ok: false, error: err.message });
   }
 });

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '../lib/api.js';
 
 const SessionContext = createContext(null);
@@ -12,6 +12,9 @@ export function SessionProvider({ children }) {
   });
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState(null);
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
+  const missedLoginChecksRef = useRef(0);
 
   const refresh = useCallback(async () => {
     const data = await api('/api/agent/me');
@@ -37,6 +40,37 @@ export function SessionProvider({ children }) {
       clearInterval(interval);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    // /api/agent/me above is pure in-memory session state -- it can never detect a
+    // desktop-side logout, since a remote sign-out doesn't touch this server process's
+    // session store at all. This periodically asks WxCC itself (the same query the
+    // "already logged in" fast path uses at startup) whether the agent is STILL
+    // actually logged in, and forces the app back to the login screen if not. Requires
+    // 2 consecutive misses before acting -- a single miss can just be WxCC's own search
+    // index momentarily behind, the same kind of transient inconsistency already seen
+    // elsewhere in this app (see the dashboard state-mapping fix).
+    const checkStillLoggedIn = async () => {
+      if (!sessionRef.current.profile) return;
+      try {
+        const { alreadyLoggedIn } = await api('/api/agent/existing-session');
+        if (alreadyLoggedIn) {
+          missedLoginChecksRef.current = 0;
+          return;
+        }
+        missedLoginChecksRef.current += 1;
+        if (missedLoginChecksRef.current >= 2) {
+          missedLoginChecksRef.current = 0;
+          setSession((s) => ({ ...s, profile: null, agentState: 'Offline', currentTask: null }));
+          setNotice("You've been signed out of WxCC (likely from another device). Please sign back in.");
+        }
+      } catch {
+        // transient network/API error -- don't count against the debounce
+      }
+    };
+    const interval = setInterval(checkStillLoggedIn, 45000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const es = new EventSource('/api/agent/events');

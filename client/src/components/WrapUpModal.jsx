@@ -8,7 +8,7 @@ const FALLBACK_CODES = ['Resolved', 'Follow-up needed', 'Transferred', 'No resol
   defaultCode: false,
 }));
 
-export function WrapUpModal({ task, onDone }) {
+export function WrapUpModal({ task, onDone, reloadSelf, resetSelfDuration, onPresenceChanged }) {
   const { session, setSession, setNotice } = useSession();
   const [codes, setCodes] = useState(session.mode === 'live' ? null : FALLBACK_CODES);
   const [codeId, setCodeId] = useState(session.mode === 'live' ? '' : FALLBACK_CODES[0].id);
@@ -53,9 +53,17 @@ export function WrapUpModal({ task, onDone }) {
       if (result.presenceError) {
         setNotice(`Wrap-up submitted, but couldn't set you back to Available: ${result.presenceError}`);
       }
-      // The server already moves the agent back to Available after wrap-up -- reflect
-      // that immediately instead of waiting for the next dashboard poll.
+      // WxCC's own agent-profile config decides the REAL post-wrap-up state (usually
+      // Available, but could be an idle code) -- assume Available as an immediate
+      // best-guess, then reset the ticker and ask the server shortly after so the
+      // reconciliation effect in PresenceBar corrects this if the guess was wrong,
+      // instead of leaving a stale/incorrect state up to a full poll cycle.
       setSession((s) => ({ ...s, currentTask: null, agentState: 'Available' }));
+      resetSelfDuration?.();
+      setTimeout(() => {
+        reloadSelf?.();
+        onPresenceChanged?.();
+      }, 3000);
       onDone?.();
     } catch (err) {
       submittedRef.current = false;

@@ -72,13 +72,26 @@ export default function App() {
         {!task && callLogOpen && <CallLog onClose={() => setCallLogOpen(false)} />}
         {!task && !callLogOpen && <Dashboard refreshSignal={dashboardRefreshSignal} />}
         {task?.status === 'connected' && <CallScreen task={task} />}
-        {task?.status === 'wrapup' && <WrapUpModal task={task} />}
+        {task?.status === 'wrapup' && (
+          <WrapUpModal
+            task={task}
+            reloadSelf={reloadSelf}
+            resetSelfDuration={resetSelfDuration}
+            onPresenceChanged={() => setDashboardRefreshSignal((n) => n + 1)}
+          />
+        )}
       </main>
       {task?.status === 'offered' && <IncomingTaskModal task={task} />}
       {/* Detected via active-call polling (the call we were tracking is no longer
           active) rather than the websocket task flow above, which never fires. */}
       {endedTaskId && task?.status !== 'wrapup' && (
-        <WrapUpModal task={{ id: endedTaskId }} onDone={clearEnded} />
+        <WrapUpModal
+          task={{ id: endedTaskId }}
+          onDone={clearEnded}
+          reloadSelf={reloadSelf}
+          resetSelfDuration={resetSelfDuration}
+          onPresenceChanged={() => setDashboardRefreshSignal((n) => n + 1)}
+        />
       )}
       {notice && (
         <div className="toast" onClick={() => setNotice(null)}>

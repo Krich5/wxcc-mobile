@@ -234,7 +234,7 @@ export async function checkExistingSession(session) {
   const stateValue = getSessionState(row);
   const bucket = categorizeAgentState(stateValue);
   const channels = Array.isArray(row?.channelInfo) ? row.channelInfo : [row?.channelInfo].filter(Boolean);
-  const telCh = channels.find((c) => c?.channelType === 'telephony') || channels[0];
+  const telCh = channels.find((c) => c?.channelType === 'telephony');
   return {
     teamId: row.teamId || null,
     teamName: row.teamName || null,
@@ -431,7 +431,14 @@ function getSessionState(agentSession) {
   const ci = agentSession?.channelInfo;
   if (!ci) return '';
   const channels = Array.isArray(ci) ? ci : [ci];
-  const ch = channels.find((c) => c?.channelType === 'telephony') || channels[0];
+  // Deliberately no `|| channels[0]` fallback: buildSessionQuery's own filter guarantees
+  // a telephony entry exists for any row this query returns, so a poll where .find() comes
+  // up empty means WxCC's search index briefly hadn't caught up yet -- falling back to a
+  // DIFFERENT channel (chat/email) here previously let a digital channel's "available"
+  // leak into the agent's telephony-facing state (the mobile header would flip to
+  // Available while genuinely idle). categorizeAgentState('') below safely buckets this
+  // as offline for just this one poll instead, which self-corrects on the next poll.
+  const ch = channels.find((c) => c?.channelType === 'telephony');
   return ch?.currentState || '';
 }
 
@@ -462,7 +469,7 @@ function getSessionDurationSeconds(agentSession) {
   const channels = Array.isArray(agentSession?.channelInfo)
     ? agentSession.channelInfo
     : [agentSession?.channelInfo].filter(Boolean);
-  const telCh = channels.find((c) => c?.channelType === 'telephony') || channels[0];
+  const telCh = channels.find((c) => c?.channelType === 'telephony');
   const raw = telCh?.lastActivityTime ?? agentSession?.startTime;
   if (!raw) return 0;
   const ts = typeof raw === 'number' ? raw : Number(raw) > 0 ? Number(raw) : Date.parse(raw);
@@ -558,7 +565,7 @@ export async function getDashboard(session) {
     const bucket = categorizeAgentState(stateValue);
     stateCounts[bucket] = (stateCounts[bucket] || 0) + 1;
     const channels = Array.isArray(s?.channelInfo) ? s.channelInfo : [s?.channelInfo].filter(Boolean);
-    const telCh = channels.find((c) => c?.channelType === 'telephony') || channels[0];
+    const telCh = channels.find((c) => c?.channelType === 'telephony');
     return {
       id: s?.agentId || `${s?.agentName}-${s?.teamId}`,
       team: teamNameById.get(s?.teamId) || s?.teamName || '—',
