@@ -51,11 +51,18 @@ function CancelIcon() {
   );
 }
 
-function RecordingDot() {
+function PlayIcon() {
   return (
-    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="8" cy="8" r="6.5" />
-      <circle cx="8" cy="8" r="3" fill="currentColor" stroke="none" />
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="M7.981 27.997a3 3 0 0 1-2.985-2.999V7.002A3 3 0 0 1 9.337 4.32l16.033 9.008a3 3 0 0 1-.024 5.356L9.38 27.659c-.434.22-.912.336-1.399.338M8.01 5.993a1.05 1.05 0 0 0-.89.522 1 1 0 0 0-.124.487v17.996a1 1 0 0 0 1.447.895l15.966-8.976a1.005 1.005 0 0 0 .449-1.444 1 1 0 0 0-.406-.367l-.043-.023L8.4 6.086a.9.9 0 0 0-.39-.093" />
+    </svg>
+  );
+}
+
+function RecordIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="16" height="16" fill="currentColor">
+      <path d="M16 2a14 14 0 1 0 14 14A14.016 14.016 0 0 0 16 2m0 26a12 12 0 1 1 12-12 12.013 12.013 0 0 1-12 12M16 11a5 5 0 1 0 5 5 5.006 5.006 0 0 0-5-5m0 8a3 3 0 1 1 0-5.999 3 3 0 0 1 0 6" />
     </svg>
   );
 }
@@ -361,8 +368,8 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
   return (
     <div className="active-call-card">
       {engaged && (
-        <span className="active-call-rec" title="Recording">
-          <RecordingDot />
+        <span className="active-call-rec" title={recordingPaused ? 'Recording paused' : 'Recording'}>
+          {recordingPaused ? <PauseIcon /> : <RecordIcon />}
         </span>
       )}
       <div className="active-call-header">
@@ -388,7 +395,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
               aria-label={onHold ? 'Unhold' : 'Hold'}
               title={onHold ? 'Unhold' : 'Hold'}
             >
-              <PauseIcon />
+              {onHold ? <PlayIcon /> : <PauseIcon />}
             </button>
             <button
               type="button"
