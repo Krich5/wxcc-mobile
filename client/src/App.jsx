@@ -41,6 +41,28 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  // Recovers from a page reload that happens mid wrap-up: session.currentTask (what
+  // WrapUpModal normally keys off of) is client-only state that resets on reload, so a
+  // real wrap-up in progress -- confirmed independently via the header's own state
+  // reconciliation -- would otherwise have no taskId left to submit against, leaving
+  // the agent stuck showing "Wrap-up" with no way to actually clear it. Both the
+  // automatic retry below and a manual click on the header pill (PresenceBar) call this
+  // same recovery.
+  const recoverWrapUp = async () => {
+    try {
+      const { taskId } = await api('/api/agent/wrapup-task');
+      if (taskId) {
+        markEnded(taskId);
+        return true;
+      }
+      setNotice("Couldn't find your in-progress call to wrap up");
+      return false;
+    } catch (err) {
+      setNotice(err.message);
+      return false;
+    }
+  };
+
   const attemptedWrapupRecoveryRef = useRef(false);
   useEffect(() => {
     if (self?.state !== 'wrapUp') {
@@ -49,17 +71,8 @@ export default function App() {
     }
     if (session.currentTask || endedTaskId || attemptedWrapupRecoveryRef.current) return;
     attemptedWrapupRecoveryRef.current = true;
-    // Recovers from a page reload that happens mid wrap-up: session.currentTask (what
-    // WrapUpModal normally keys off of) is client-only state that resets on reload, so a
-    // real wrap-up in progress -- confirmed independently via the header's own state
-    // reconciliation -- would otherwise have no taskId left to submit against, leaving
-    // the agent stuck showing "Wrap-up" with no way to actually clear it.
-    api('/api/agent/wrapup-task')
-      .then(({ taskId }) => {
-        if (taskId) markEnded(taskId);
-      })
-      .catch(() => {});
-  }, [self?.state, session.currentTask, endedTaskId, markEnded]);
+    recoverWrapUp();
+  }, [self?.state, session.currentTask, endedTaskId]);
 
   if (loading) {
     return (
@@ -93,6 +106,7 @@ export default function App() {
         resetSelfDuration={resetSelfDuration}
         refreshActiveCall={refreshActiveCall}
         setOptimisticCall={setOptimisticCall}
+        onRelaunchWrapUp={recoverWrapUp}
         notificationsEnabled={notificationsEnabled}
         onRequestNotifications={requestNotifications}
       />

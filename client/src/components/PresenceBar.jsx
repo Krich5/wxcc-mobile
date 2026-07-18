@@ -63,6 +63,7 @@ export function PresenceBar({
   resetSelfDuration,
   refreshActiveCall,
   setOptimisticCall,
+  onRelaunchWrapUp,
   notificationsEnabled,
   onRequestNotifications,
 }) {
@@ -326,7 +327,7 @@ export function PresenceBar({
             <button
               type="button"
               className={`state-select ${pillModifierClass}`}
-              onClick={() => setStateMenuOpen((o) => !o)}
+              onClick={() => (self?.state === 'wrapUp' ? onRelaunchWrapUp?.() : setStateMenuOpen((o) => !o))}
             >
               <span>
                 {currentLabel}

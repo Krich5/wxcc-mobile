@@ -366,15 +366,19 @@ export async function findWrapUpTask(session) {
   // that resets on reload, so a real wrap-up in progress -- confirmed independently via
   // the agent's own session-state bucket, which comes from agentSession, not taskDetails
   // -- would otherwise have no taskId left to submit against, leaving the agent stuck.
+  //
+  // Deliberately NOT filtered by taskDetails.status here -- by the time an agent is stuck
+  // in wrap-up, the underlying task record can already read "ended"/"closed" even though
+  // the agent-side wrap-up itself is still open, so requiring a "wrap"-ish status came up
+  // empty in practice. The agent's single most recent task is the only reasonable
+  // candidate anyway; the wrapup REST call itself is what actually validates it.
   const ctx = await resolveAgentContext(session);
   const now = Date.now();
   const fromMs = now - 4 * 60 * 60 * 1000;
   const data = await runGraphQL(session, buildRecentTasksQuery(fromMs, now, ctx.agentId));
   const tasks = data?.taskDetails?.tasks || [];
-  const wrapupTasks = tasks
-    .filter((t) => (t?.status || '').toLowerCase().includes('wrap'))
-    .sort((a, b) => (b?.createdTime || 0) - (a?.createdTime || 0));
-  return wrapupTasks[0]?.id || null;
+  const mostRecent = [...tasks].sort((a, b) => (b?.createdTime || 0) - (a?.createdTime || 0))[0];
+  return mostRecent?.id || null;
 }
 
 async function fetchAllTaskPages(session, buildQuery, fromMs, toMs) {
