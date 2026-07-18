@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../lib/api.js';
 
-export function OutdialModal({ onClose, onActionTaken }) {
+export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
   const [destination, setDestination] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -12,10 +12,25 @@ export function OutdialModal({ onClose, onActionTaken }) {
     setBusy(true);
     setError(null);
     try {
-      await api('/api/agent/outdial', { method: 'POST', body: JSON.stringify({ destination }) });
-      // ActiveCall's own poll picks this up on its next 2s tick regardless, but firing an
-      // immediate refresh right after the call is placed avoids that visible delay --
-      // same "fetch data right when you click" pattern the other call controls use.
+      const { task } = await api('/api/agent/outdial', { method: 'POST', body: JSON.stringify({ destination }) });
+      // The real active-call poll can lag several seconds before this new task is
+      // searchable -- show a "Calling…" card right away instead of the screen looking
+      // like nothing happened while the callee's phone is still ringing.
+      if (task?.id) {
+        onCallStarted?.({
+          id: task.id,
+          status: 'dialing',
+          statusLabel: 'Calling…',
+          direction: 'outbound',
+          origin: null,
+          destination,
+          createdTimeMs: Date.now(),
+          team: null,
+          entryPoint: null,
+          customerName: null,
+          customerPhone: destination,
+        });
+      }
       onActionTaken?.();
       onClose();
     } catch (err) {

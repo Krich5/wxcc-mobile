@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 
 const POLL_MS = 2000;
+// How long to keep showing an optimistic "Calling…" card while waiting for the real
+// taskDetails search index to catch up with a just-placed outbound call -- without this,
+// a fresh outdial shows nothing at all until the index catches up (which can take a few
+// poll cycles), often well after the callee has already answered.
+const OPTIMISTIC_GRACE_MS = 8000;
 
 // Single poll of /api/agent/active-call shared by the ActiveCall display and the
 // wrap-up flow -- the websocket notification path never fires (subscribe never
@@ -17,6 +22,7 @@ export function useActiveCall(mode) {
   // still active and silently resurrect it, undoing the immediate transition to wrap-up.
   const suppressIdRef = useRef(null);
   const mountedRef = useRef(true);
+  const optimisticRef = useRef(null); // { id, setAtMs } while a just-placed call awaits indexing
 
   const load = useCallback(() => {
     if (mode !== 'live') return;
@@ -25,14 +31,32 @@ export function useActiveCall(mode) {
         if (!mountedRef.current) return;
         if (suppressIdRef.current && result?.id === suppressIdRef.current) return;
         suppressIdRef.current = null;
-        if (!result && lastCallIdRef.current) {
-          setEndedTaskId(lastCallIdRef.current);
+        if (!result) {
+          const optimistic = optimisticRef.current;
+          if (optimistic && Date.now() - optimistic.setAtMs < OPTIMISTIC_GRACE_MS) {
+            // The search index just hasn't caught up with this call yet -- keep showing
+            // the optimistic card rather than flashing back to "no active call".
+            return;
+          }
+          optimisticRef.current = null;
+          if (lastCallIdRef.current) setEndedTaskId(lastCallIdRef.current);
+        } else {
+          optimisticRef.current = null;
         }
         lastCallIdRef.current = result?.id || null;
         setCall(result);
       })
       .catch(() => {});
   }, [mode]);
+
+  // Called right after placing an outbound call -- the real poll can lag several
+  // seconds before the new task is searchable, so show this immediately instead of
+  // leaving the screen looking like nothing happened.
+  const setOptimisticCall = (optimisticCall) => {
+    optimisticRef.current = { id: optimisticCall.id, setAtMs: Date.now() };
+    lastCallIdRef.current = optimisticCall.id;
+    setCall(optimisticCall);
+  };
 
   useEffect(() => {
     mountedRef.current = true;
@@ -56,5 +80,12 @@ export function useActiveCall(mode) {
     setEndedTaskId(taskId);
   };
 
-  return { call, endedTaskId, clearEnded: () => setEndedTaskId(null), markEnded, refresh: load };
+  return {
+    call,
+    endedTaskId,
+    clearEnded: () => setEndedTaskId(null),
+    markEnded,
+    refresh: load,
+    setOptimisticCall,
+  };
 }

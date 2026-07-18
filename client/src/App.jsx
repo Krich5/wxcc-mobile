@@ -17,7 +17,14 @@ export default function App() {
   const { session, loading, notice, setNotice } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [callLogOpen, setCallLogOpen] = useState(false);
-  const { call, endedTaskId, clearEnded, markEnded, refresh: refreshActiveCall } = useActiveCall(session.mode);
+  const {
+    call,
+    endedTaskId,
+    clearEnded,
+    markEnded,
+    refresh: refreshActiveCall,
+    setOptimisticCall,
+  } = useActiveCall(session.mode);
   const {
     self,
     dashboard,
@@ -64,6 +71,7 @@ export default function App() {
         reloadSelf={reloadSelf}
         resetSelfDuration={resetSelfDuration}
         refreshActiveCall={refreshActiveCall}
+        setOptimisticCall={setOptimisticCall}
         notificationsEnabled={notificationsEnabled}
         onRequestNotifications={requestNotifications}
       />

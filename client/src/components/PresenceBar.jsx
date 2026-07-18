@@ -62,6 +62,7 @@ export function PresenceBar({
   reloadSelf,
   resetSelfDuration,
   refreshActiveCall,
+  setOptimisticCall,
   notificationsEnabled,
   onRequestNotifications,
 }) {
@@ -491,7 +492,11 @@ export function PresenceBar({
 
       {profileSettingsOpen && <ProfileSettingsModal onClose={() => setProfileSettingsOpen(false)} />}
       {outdialOpen && (
-        <OutdialModal onClose={() => setOutdialOpen(false)} onActionTaken={refreshActiveCall} />
+        <OutdialModal
+          onClose={() => setOutdialOpen(false)}
+          onActionTaken={refreshActiveCall}
+          onCallStarted={setOptimisticCall}
+        />
       )}
     </>
   );
