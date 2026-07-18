@@ -603,6 +603,16 @@ button.primary:disabled {
   color: var(--danger);
 }
 
+.state-select.is-oncall {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.state-select.is-wrapup {
+  border-color: var(--wrapup);
+  color: var(--wrapup);
+}
+
 .state-select-caret {
   font-size: 1.3em;
   line-height: 1;

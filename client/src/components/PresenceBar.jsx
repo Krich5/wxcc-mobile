@@ -134,9 +134,13 @@ export function PresenceBar({
 
   // Same source of truth as the dashboard's agent list -- reconcile our optimistic
   // client-side agentState with what WxCC actually reports every time the shared self
-  // poll updates, so the two can never drift apart for long. Available/Idle/ringing are
-  // reconciled here; on-call/wrap-up are still left alone since ActiveCall/WrapUpModal
-  // already own showing the agent's status for those via their own dedicated UI.
+  // poll updates, so the two can never drift apart for long. Every bucket is reconciled
+  // here now, including on-call/wrap-up: ActiveCall/WrapUpModal own the CONTROLS for
+  // those, but the header pill should still reflect them too rather than keep showing
+  // whatever it was before the call started -- and since self.durationSec already comes
+  // from the current activity regardless of its state (see getStateTimes() server-side),
+  // reconciling to 'Engaged' here also means the header's own duration automatically
+  // becomes the real call duration, with no separate calculation needed.
   useEffect(() => {
     if (!self) return;
     if (self.state === 'available') {
@@ -154,6 +158,10 @@ export function PresenceBar({
       // and auto-RONA'd, even though the roster (which has no such reconciliation gap)
       // correctly showed the real state the whole time.
       setSession((s) => (s.agentState === 'Reserved' ? s : { ...s, agentState: 'Reserved' }));
+    } else if (self.state === 'onCall') {
+      setSession((s) => (s.agentState === 'Engaged' ? s : { ...s, agentState: 'Engaged' }));
+    } else if (self.state === 'wrapUp') {
+      setSession((s) => (s.agentState === 'Wrap-up' ? s : { ...s, agentState: 'Wrap-up' }));
     }
     // Deliberately keyed on the state fields, not the `self` object reference:
     // resetSelfDuration() replaces `self` with a new object on every call (now patched
@@ -262,9 +270,18 @@ export function PresenceBar({
   // names, since a live-ticking clock frozen inside a dropdown option reads as stale/odd.
   const currentLabel = isAvailable
     ? 'Available'
-    : session.agentState === 'Reserved'
-      ? 'Reserved'
+    : session.agentState === 'Reserved' || session.agentState === 'Engaged' || session.agentState === 'Wrap-up'
+      ? session.agentState
       : matchedCode?.name || currentIdleName || 'Idle';
+  // Matches the roster's own state-badge colors (state-badge-onCall/-wrapUp/-idle) so the
+  // header pill and the roster agree visually, not just in text, for the same agent.
+  const pillModifierClass = isAvailable
+    ? 'is-available'
+    : session.agentState === 'Engaged'
+      ? 'is-oncall'
+      : session.agentState === 'Wrap-up'
+        ? 'is-wrapup'
+        : 'is-idle';
 
   return (
     <>
@@ -282,7 +299,7 @@ export function PresenceBar({
           <div className="state-dropdown">
             <button
               type="button"
-              className={`state-select ${isAvailable ? 'is-available' : 'is-idle'}`}
+              className={`state-select ${pillModifierClass}`}
               onClick={() => setStateMenuOpen((o) => !o)}
             >
               <span>
