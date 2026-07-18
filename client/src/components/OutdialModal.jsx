@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 
 export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
   const [destination, setDestination] = useState('');
+  // Lazily loaded from this agent's profile -- most profiles have zero or one caller-ID
+  // option configured (outdialANIId absent), in which case the picker is hidden entirely
+  // and WxCC resolves the caller ID server-side, same as before this existed.
+  const [anis, setAnis] = useState(null);
+  const [ani, setAni] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api('/api/agent/outdial-anis')
+      .then(({ anis: list }) => {
+        setAnis(list || []);
+        const defaultEntry = (list || []).find((a) => a.isDefault);
+        if (defaultEntry) setAni(defaultEntry.number);
+      })
+      .catch(() => setAnis([]));
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -12,7 +27,10 @@ export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
     setBusy(true);
     setError(null);
     try {
-      const { task } = await api('/api/agent/outdial', { method: 'POST', body: JSON.stringify({ destination }) });
+      const { task } = await api('/api/agent/outdial', {
+        method: 'POST',
+        body: JSON.stringify({ destination, ani: ani || undefined }),
+      });
       // The real active-call poll can lag several seconds before this new task is
       // searchable -- show a "Calling…" card right away instead of the screen looking
       // like nothing happened while the callee's phone is still ringing.
@@ -44,6 +62,21 @@ export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
     <div className="overlay" onClick={onClose}>
       <form className="card profile-settings-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h2>New Call</h2>
+        {anis && anis.length > 0 && (
+          <label className="field">
+            Outdial ANI
+            <select value={ani} onChange={(e) => setAni(e.target.value)} required>
+              <option value="" disabled>
+                Enter Outdial ANI
+              </option>
+              {anis.map((a) => (
+                <option key={a.id} value={a.number}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="field">
           Phone number
           <input

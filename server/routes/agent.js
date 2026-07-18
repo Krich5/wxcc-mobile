@@ -155,6 +155,16 @@ router.get('/entry-points', async (req, res) => {
   }
 });
 
+router.get('/outdial-anis', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, anis: [] });
+  try {
+    const anis = await live.getOutdialAnis(req.session);
+    res.json({ ok: true, anis });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/existing-session', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, alreadyLoggedIn: false });
   try {
@@ -299,14 +309,14 @@ router.post('/simulate-task', (req, res) => {
 });
 
 router.post('/outdial', async (req, res) => {
-  const { destination } = req.body || {};
+  const { destination, ani } = req.body || {};
   if (!destination) return res.status(400).json({ ok: false, error: 'Destination is required' });
   try {
     // Unlike the inbound flow, ActiveCall doesn't need this task pushed into
     // session.currentTask -- useActiveCall's own poll (getActiveCall, via taskDetails)
     // picks up any active task owned by this agent regardless of how it started, the
     // same way it already does for calls answered through the inbound flow.
-    const task = await providerFor(req.session).startOutdial(req.session, { destination });
+    const task = await providerFor(req.session).startOutdial(req.session, { destination, ani });
     res.json({ ok: true, task });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });

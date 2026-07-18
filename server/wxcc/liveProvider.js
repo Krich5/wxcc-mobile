@@ -452,29 +452,57 @@ export async function setState(session, state, { auxCodeId, reason } = {}) {
   return data;
 }
 
-export async function startOutdial(session, { destination }) {
+export async function getOutdialAnis(session) {
+  // Confirmed via a live HAR capture of Cisco's own "EPIC" outdial widget: when a profile
+  // has more than one caller-ID option, agent-profile.outdialANIId (note the ANI casing --
+  // a different field than outdialEntryPointId below) points at GET /organization/{orgId}/
+  // v2/outdial-ani/{outdialANIId}/entry, which returns the {id, name, number} list the
+  // widget's "Outdial ANI" dropdown is built from. Plenty of profiles don't have this
+  // configured at all -- an empty list here just means there's nothing to choose from,
+  // not an error.
+  const profile = await loadAgentProfile(session);
+  const outdialAniId = profile?.outdialANIId;
+  if (!outdialAniId) return [];
+  const ctx = await resolveAgentContext(session);
+  const data = await authedFetch(
+    session,
+    `/organization/${ctx.orgId}/v2/outdial-ani/${outdialAniId}/entry?page=0&pageSize=100`
+  );
+  return (data?.data || []).map((e) => ({
+    id: e.id,
+    name: e.name,
+    number: e.number,
+    isDefault: !!e.defaultANIEntry,
+  }));
+}
+
+export async function startOutdial(session, { destination, ani }) {
   // Confirmed via a live HAR capture of Cisco's own "EPIC" outdial widget: POST
   // /v1/tasks/ (note the trailing slash) is the only place in this whole file that
   // CREATES a task rather than acting on an existing one -- every other tasks/{id}/...
   // endpoint here assumes the task already exists (via the inbound ContactOffered
-  // notification). No ANI/caller-ID field in the request body at all; it's resolved
-  // server-side from entryPointId, which comes from this agent's OWN profile
-  // (outdialEntryPointId) rather than anything the agent picks per call.
+  // notification). entryPointId always comes from this agent's OWN profile
+  // (outdialEntryPointId). Caller-ID is a separate, optional concern: when the profile has
+  // multiple ANIs configured (getOutdialAnis() above), the widget sends the agent's chosen
+  // number as `origin` -- with zero/one option configured, no `origin` field is sent at
+  // all and WxCC resolves it server-side instead.
   const profile = await loadAgentProfile(session);
   const entryPointId = profile?.outdialEntryPointId;
   if (!entryPointId) {
     throw new Error('Outbound calling is not enabled on your agent profile (no outdial entry point configured)');
   }
+  const body = {
+    destination,
+    entryPointId,
+    direction: 'OUTBOUND',
+    attributes: {},
+    mediaType: 'telephony',
+    outboundType: 'OUTDIAL',
+  };
+  if (ani) body.origin = ani;
   const data = await authedFetch(session, '/v1/tasks/', {
     method: 'POST',
-    body: JSON.stringify({
-      destination,
-      entryPointId,
-      direction: 'OUTBOUND',
-      attributes: {},
-      mediaType: 'telephony',
-      outboundType: 'OUTDIAL',
-    }),
+    body: JSON.stringify(body),
   });
   return data?.data || data;
 }

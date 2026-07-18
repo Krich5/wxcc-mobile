@@ -37,7 +37,7 @@ export function simulateIncomingTask(session) {
   return task;
 }
 
-export function startOutdial(session, { destination }) {
+export function startOutdial(session, { destination, ani }) {
   if (session.currentTask) {
     throw new Error('A task is already in progress');
   }
