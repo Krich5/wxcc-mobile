@@ -73,6 +73,10 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
   }, [call?.id]);
 
   if (!call) return null;
+  // A parked call is deliberately set aside (usually for another agent/queue to pick up
+  // later) -- it's not something THIS agent needs to act on right now, so it shouldn't
+  // keep floating on screen as if it still needed attention the way an active call does.
+  if ((call.statusLabel || '').toLowerCase() === 'parked') return null;
 
   // Ringing calls aren't answered through this app (the agent's own phone rings) -- call
   // controls only make sense once the call is actually engaged (including on hold --

@@ -134,9 +134,9 @@ export function PresenceBar({
 
   // Same source of truth as the dashboard's agent list -- reconcile our optimistic
   // client-side agentState with what WxCC actually reports every time the shared self
-  // poll updates, so the two can never drift apart for long. Only Available/Idle are
-  // reconciled here; on-call/ringing/wrap-up are transient call states that don't
-  // correspond to a presence-dropdown option.
+  // poll updates, so the two can never drift apart for long. Available/Idle/ringing are
+  // reconciled here; on-call/wrap-up are still left alone since ActiveCall/WrapUpModal
+  // already own showing the agent's status for those via their own dedicated UI.
   useEffect(() => {
     if (!self) return;
     if (self.state === 'available') {
@@ -145,6 +145,15 @@ export function PresenceBar({
       const label = self.idleCode && self.idleCode !== '—' ? self.idleCode : self.stateLabel;
       const next = `Idle: ${label}`;
       setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
+    } else if (self.state === 'ringing') {
+      // Matches Cisco's own agent header, which shows "Reserved" the instant a call is
+      // offered/ringing, before the agent has accepted it. Previously this whole
+      // transient window (ringing, and a RONA if it's missed) fell through neither
+      // branch above, so the header just kept showing whatever it was BEFORE the call
+      // came in -- e.g. still "Available" throughout a call that was offered, missed,
+      // and auto-RONA'd, even though the roster (which has no such reconciliation gap)
+      // correctly showed the real state the whole time.
+      setSession((s) => (s.agentState === 'Reserved' ? s : { ...s, agentState: 'Reserved' }));
     }
     // Deliberately keyed on the state fields, not the `self` object reference:
     // resetSelfDuration() replaces `self` with a new object on every call (now patched
@@ -251,7 +260,11 @@ export function PresenceBar({
       : null;
   // Only the closed button shows elapsed time -- the open list just shows plain state
   // names, since a live-ticking clock frozen inside a dropdown option reads as stale/odd.
-  const currentLabel = isAvailable ? 'Available' : matchedCode?.name || currentIdleName || 'Idle';
+  const currentLabel = isAvailable
+    ? 'Available'
+    : session.agentState === 'Reserved'
+      ? 'Reserved'
+      : matchedCode?.name || currentIdleName || 'Idle';
 
   return (
     <>

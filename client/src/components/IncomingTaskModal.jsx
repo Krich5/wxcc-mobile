@@ -18,7 +18,7 @@ export function IncomingTaskModal({ task }) {
     <div className="overlay">
       <div className="card incoming-call">
         <div className="pulse-ring" />
-        <h2>Incoming task</h2>
+        <h2>Incoming Call</h2>
         <p className="ani">{task.ani}</p>
         <p className="queue">{task.queue}</p>
         <div className="call-actions">

@@ -285,7 +285,7 @@ function getCallStatusLabel(rawStatus) {
   // stripped before comparing since WxCC isn't consistent about "on_hold" vs "On-Hold"
   // casing/separators across its own resources.
   const s = (rawStatus || '').toLowerCase().replace(/[_-]/g, '');
-  if (s === 'connect') return 'Ringing';
+  if (s === 'connect') return 'Incoming Call';
   if (s === 'connected' || s === 'talking') return 'Engaged';
   if (s === 'onhold' || s === 'hold') return 'On Hold';
   return rawStatus || 'Active';
@@ -492,7 +492,7 @@ function getStateBadgeLabel(stateValue) {
   if (STATE_BUCKETS.available.includes(norm)) return 'Available';
   if (norm === 'HOLD' || norm === 'ON_HOLD') return 'Hold';
   if (STATE_BUCKETS.onCall.includes(norm)) return 'Connected';
-  if (STATE_BUCKETS.ringing.includes(norm)) return 'Ringing';
+  if (STATE_BUCKETS.ringing.includes(norm)) return 'Incoming Call';
   if (STATE_BUCKETS.wrapUp.includes(norm)) return 'Wrap-up';
   if (STATE_BUCKETS.idle.includes(norm)) return 'Idle';
   if (norm === '') return 'Unknown';
