@@ -553,7 +553,16 @@ button.primary:disabled {
   background: var(--bg-elevated);
   border: 1px solid var(--success);
   color: var(--success);
-  max-width: 160px;
+  /* Wide enough for the "{reason} {time in reason} / {total idle time}" format (e.g.
+     "Meeting 01:20 / 05:24") -- .presence-bar-team's own ellipsis/min-width:0 already
+     lets the team name shrink to make room for this growing. */
+  max-width: 220px;
+  white-space: nowrap;
+}
+
+.state-select span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .state-select.is-idle {

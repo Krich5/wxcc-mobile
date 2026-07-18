@@ -200,8 +200,16 @@ export function PresenceBar({
     ? 'Available'
     : matchedCode?.id || (currentIdleName ? `current:${currentIdleName}` : '');
 
-  const elapsed =
-    self && fetchedAtMs != null ? formatElapsed(self.durationSec + (Date.now() - fetchedAtMs) / 1000) : null;
+  const elapsedSinceFetch = fetchedAtMs != null ? (Date.now() - fetchedAtMs) / 1000 : 0;
+  const elapsed = self && fetchedAtMs != null ? formatElapsed(self.durationSec + elapsedSinceFetch) : null;
+  // Time in the CURRENT reason (elapsed, resets on every idle-code switch) vs. total time
+  // idle overall (self.totalIdleSec, cumulative until the agent goes Available/on-call) --
+  // matches Cisco's own desktop header format ("Lunch - 00:00 / 02:24") and the same two
+  // numbers already shown in the Agent State roster below.
+  const totalIdleElapsed =
+    self?.totalIdleSec != null && fetchedAtMs != null
+      ? formatElapsed(self.totalIdleSec + elapsedSinceFetch)
+      : null;
   // Only the closed button shows elapsed time -- the open list just shows plain state
   // names, since a live-ticking clock frozen inside a dropdown option reads as stale/odd.
   const currentLabel = isAvailable ? 'Available' : matchedCode?.name || currentIdleName || 'Idle';
@@ -228,6 +236,7 @@ export function PresenceBar({
               <span>
                 {currentLabel}
                 {elapsed ? ` ${elapsed}` : ''}
+                {totalIdleElapsed ? ` / ${totalIdleElapsed}` : ''}
               </span>
               <span className="state-select-caret">▾</span>
             </button>
