@@ -220,8 +220,12 @@ export function PresenceBar({
   // idle overall (self.totalIdleSec, cumulative until the agent goes Available/on-call) --
   // matches Cisco's own desktop header format ("Lunch - 00:00 / 02:24") and the same two
   // numbers already shown in the Agent State roster below.
+  // Gated on isAvailable too, not just self.totalIdleSec != null: resetSelfDuration()
+  // only zeroes durationSec on a local flip to Available, not totalIdleSec, so the OLD
+  // idle total could otherwise still be sitting in `self` and flash briefly (e.g.
+  // "Available 00:03 / 16:22") until the delayed reload catches up.
   const totalIdleElapsed =
-    self?.totalIdleSec != null && fetchedAtMs != null
+    !isAvailable && self?.totalIdleSec != null && fetchedAtMs != null
       ? formatElapsed(self.totalIdleSec + elapsedSinceFetch)
       : null;
   // Only the closed button shows elapsed time -- the open list just shows plain state
