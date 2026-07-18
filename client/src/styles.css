@@ -1,13 +1,37 @@
+/* Light is the default theme (falls back here with no data-theme attribute at all, e.g.
+   before the boot script in index.html has run) -- [data-theme='dark'] below overrides
+   every one of these for the cached/toggled dark variant. Status/brand accent colors
+   (--danger/--success/--amber/--wrapup/--brand) are deliberately theme-invariant: they're
+   used as saturated badge/button fills with their own fixed-contrast text, not page
+   surfaces, so they don't need a light/dark pair.
+*/
 :root {
   --brand: #0057d8;
-  --bg: #0b1220;
-  --bg-elevated: #121b2e;
-  --text: #eaf0ff;
-  --text-dim: #93a3c2;
+  --bg: #f3f4f6;
+  --bg-elevated: #ffffff;
+  --text: #111827;
+  --text-dim: #5b6472;
+  --border: #d7dbe3;
+  --border-subtle: #e8eaef;
+  --overlay-hover: rgba(0, 0, 0, 0.05);
+  --overlay-stripe: rgba(0, 0, 0, 0.02);
+  --bg-image: url('/images/gradient-background-light.svg');
   --danger: #e5484d;
   --success: #2fb376;
   --amber: #d9a441;
   --wrapup: #7c7ce0;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0b1220;
+  --bg-elevated: #121b2e;
+  --text: #eaf0ff;
+  --text-dim: #93a3c2;
+  --border: #263457;
+  --border-subtle: #1b2740;
+  --overlay-hover: rgba(255, 255, 255, 0.06);
+  --overlay-stripe: rgba(255, 255, 255, 0.02);
+  --bg-image: url('/images/gradient-background-dark.svg');
 }
 
 * {
@@ -35,7 +59,7 @@ body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg);
-  background-image: url('/images/gradient-background-dark.svg');
+  background-image: var(--bg-image);
   background-size: cover;
   background-position: top center;
   background-repeat: no-repeat;
@@ -212,7 +236,7 @@ input {
 .field select {
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--text);
 }
@@ -256,7 +280,7 @@ button.primary {
 button.secondary {
   background: transparent;
   color: var(--text);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
 }
 
 button.primary:disabled {
@@ -280,7 +304,7 @@ button.primary:disabled {
   gap: 12px;
   padding: 16px;
   background: var(--bg-elevated);
-  border-bottom: 1px solid #1b2740;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .presence-bar-team {
@@ -353,7 +377,7 @@ button.primary:disabled {
   height: 100vh;
   height: 100dvh;
   background: var(--bg-elevated);
-  border-left: 1px solid #263457;
+  border-left: 1px solid var(--border);
   padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
   padding-top: calc(24px + env(safe-area-inset-top));
   display: flex;
@@ -418,7 +442,7 @@ button.primary:disabled {
   border-radius: 999px;
   background: transparent;
   color: var(--text-dim);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   font-size: 0.85rem;
 }
 
@@ -478,7 +502,7 @@ button.primary:disabled {
   padding: 6px;
   min-width: 170px;
   background: var(--bg-elevated);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
 }
@@ -492,7 +516,7 @@ button.primary:disabled {
 }
 
 .state-dropdown-list li:active {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--overlay-hover);
 }
 
 .state-dropdown-list li.active {
@@ -584,7 +608,7 @@ button.primary:disabled {
   min-width: 0;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text);
 }
@@ -603,7 +627,7 @@ button.primary:disabled {
   padding: 0;
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg);
 }
@@ -615,7 +639,7 @@ button.primary:disabled {
   gap: 10px;
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #1b2740;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .address-book-suggestions li:last-child {
@@ -623,7 +647,7 @@ button.primary:disabled {
 }
 
 .address-book-suggestions li:active {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--overlay-hover);
 }
 
 .address-book-name {
@@ -645,7 +669,7 @@ button.primary:disabled {
   padding: 0;
   max-height: 220px;
   overflow-y: auto;
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--bg);
 }
@@ -656,7 +680,7 @@ button.primary:disabled {
   gap: 10px;
   padding: 10px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #1b2740;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .agent-picker-list li:last-child {
@@ -664,7 +688,7 @@ button.primary:disabled {
 }
 
 .agent-picker-list li:active {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--overlay-hover);
 }
 
 .agent-picker-list li.active {
@@ -709,7 +733,7 @@ button.primary:disabled {
 
 .stat-card {
   background: var(--bg-elevated);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   border-radius: 14px;
   padding: 12px 14px;
 }
@@ -744,7 +768,7 @@ button.primary:disabled {
 
 .agent-card {
   background: var(--bg-elevated);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
@@ -843,7 +867,7 @@ button.primary:disabled {
 }
 
 .dashboard-table tbody tr:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--overlay-stripe);
 }
 
 .state-badge {
@@ -997,7 +1021,7 @@ button.link {
   height: 76px;
   border-radius: 50%;
   background: var(--bg-elevated);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   color: var(--text);
   font-size: 0.8rem;
 }
@@ -1060,7 +1084,7 @@ button.link {
 
 .call-log-row {
   background: var(--bg);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 12px;
 }
@@ -1108,7 +1132,7 @@ button.link {
   right: 16px;
   bottom: calc(24px + env(safe-area-inset-bottom));
   background: var(--bg-elevated);
-  border: 1px solid #263457;
+  border: 1px solid var(--border);
   color: var(--text);
   padding: 12px 16px;
   border-radius: 12px;

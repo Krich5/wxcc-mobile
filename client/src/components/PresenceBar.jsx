@@ -3,6 +3,7 @@ import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 import { APP_VERSION } from '../version.js';
 import { formatElapsed } from '../lib/time.js';
+import { applyTheme, getStoredTheme } from '../lib/theme.js';
 
 export function PresenceBar({
   onOpenCallLog,
@@ -21,6 +22,13 @@ export function PresenceBar({
   const [, forceTick] = useState(0);
   const [branding, setBranding] = useState(null); // { appTitle, logo } from the team's desktop layout
   const [logoFailed, setLogoFailed] = useState(false);
+  const [theme, setTheme] = useState(getStoredTheme);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    setTheme(next);
+  };
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -237,6 +245,9 @@ export function PresenceBar({
                   Enable notifications
                 </button>
               )}
+              <button className="secondary" onClick={toggleTheme}>
+                {theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              </button>
             </div>
             <p className="side-panel-version">App version {APP_VERSION}</p>
             <button className="secondary" onClick={() => setConfirmSignOut(true)}>
