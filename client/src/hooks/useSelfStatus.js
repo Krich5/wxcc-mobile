@@ -23,6 +23,7 @@ export function useSelfStatus(mode) {
     api('/api/agent/dashboard')
       .then((result) => {
         let self = result?.self;
+        let agents = result?.agents;
         const resetAtMs = resetAtMsRef.current;
         if (self && resetAtMs != null) {
           // WxCC's own backend can lag before it reflects a state change we just made --
@@ -31,10 +32,16 @@ export function useSelfStatus(mode) {
           // elapsed timer jump forward and keep ticking up from that inflated baseline.
           // Never let the accepted duration exceed how long we know it's actually been
           // since the transition; this self-corrects once WxCC's own value catches up.
+          // Applied to this agent's roster row too, not just self, so the two can't
+          // show different numbers if a reload lands inside that same window.
           const elapsedSinceReset = (Date.now() - resetAtMs) / 1000;
-          self = { ...self, durationSec: Math.min(self.durationSec, elapsedSinceReset) };
+          const clamped = Math.min(self.durationSec, elapsedSinceReset);
+          self = { ...self, durationSec: clamped };
+          if (Array.isArray(agents)) {
+            agents = agents.map((a) => (a.id === self.id ? { ...a, durationSec: clamped } : a));
+          }
         }
-        setDashboard({ ...result, self });
+        setDashboard({ ...result, self, agents });
         setDashboardError(null);
         setFetchedAtMs(Date.now());
       })
@@ -50,11 +57,20 @@ export function useSelfStatus(mode) {
 
   // Optimistically zero the ticker right after a local state change, without waiting for
   // a fresh poll to confirm it (the poll itself is deliberately delayed elsewhere to
-  // avoid racing WxCC's own backend propagation lag).
+  // avoid racing WxCC's own backend propagation lag). Also patches this agent's own row
+  // in `agents` (matched via self.id) so the roster doesn't keep showing the stale
+  // pre-switch duration for those same few seconds while only the header updates.
   const resetDuration = useCallback(() => {
     resetAtMsRef.current = Date.now();
     setFetchedAtMs(Date.now());
-    setDashboard((d) => (d?.self ? { ...d, self: { ...d.self, durationSec: 0 } } : d));
+    setDashboard((d) => {
+      if (!d?.self) return d;
+      const nextSelf = { ...d.self, durationSec: 0 };
+      const agents = Array.isArray(d.agents)
+        ? d.agents.map((a) => (a.id === d.self.id ? { ...a, durationSec: 0 } : a))
+        : d.agents;
+      return { ...d, self: nextSelf, agents };
+    });
   }, []);
 
   return { self: dashboard?.self || null, dashboard, dashboardError, fetchedAtMs, reload, resetDuration };

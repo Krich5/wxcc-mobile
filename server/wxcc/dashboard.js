@@ -657,6 +657,11 @@ export async function getDashboard(session) {
   const selfRow = agentRows.find((r) => r.id === ctx.agentId);
   const self = selfRow
     ? {
+        // Included so the client can find and patch this same agent's row in `agents`
+        // (see useSelfStatus.js's resetDuration()) -- without it, an optimistic reset
+        // right after a local presence change only updates `self`, leaving the roster
+        // row showing stale pre-switch numbers for the few seconds until the next poll.
+        id: selfRow.id,
         state: selfRow.state,
         stateLabel: selfRow.stateLabel,
         durationSec: selfRow.durationSec,

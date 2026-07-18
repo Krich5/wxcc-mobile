@@ -224,8 +224,13 @@ export function PresenceBar({
   // only zeroes durationSec on a local flip to Available, not totalIdleSec, so the OLD
   // idle total could otherwise still be sitting in `self` and flash briefly (e.g.
   // "Available 00:03 / 16:22") until the delayed reload catches up.
+  // Also only shown once it actually DIFFERS from the current-reason duration -- at the
+  // start of a fresh idle stretch (or right after switching Available -> Idle) the two
+  // are the same number by definition, so "Presenting 00:10 / 00:10" is just noise; the
+  // total only becomes meaningful once there's been a PRIOR idle-code switch this same
+  // stretch (e.g. Lunch -> Meeting), which is exactly when totalIdleSec > durationSec.
   const totalIdleElapsed =
-    !isAvailable && self?.totalIdleSec != null && fetchedAtMs != null
+    !isAvailable && self?.totalIdleSec != null && self.totalIdleSec > self.durationSec && fetchedAtMs != null
       ? formatElapsed(self.totalIdleSec + elapsedSinceFetch)
       : null;
   // Only the closed button shows elapsed time -- the open list just shows plain state
