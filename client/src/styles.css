@@ -563,16 +563,21 @@ button.primary:disabled {
   background: var(--bg-elevated);
   border: 1px solid var(--success);
   color: var(--success);
-  /* Wide enough for the "{reason} {time in reason} / {total idle time}" format (e.g.
-     "Meeting 01:20 / 05:24") -- .presence-bar-team's own ellipsis/min-width:0 already
-     lets the team name shrink to make room for this growing. */
-  max-width: 220px;
+  /* Wide enough for longer idle-code names + the "{time in reason} / {total idle time}"
+     format (e.g. "Out of Office 00:01", "Meeting 01:20 / 05:24") -- .presence-bar-team's
+     own ellipsis/min-width:0 shrinks the team name to make room for this growing instead.
+     flex-shrink:0 is the actual fix for the header row itself growing taller: without it,
+     a flex child can still wrap onto a second line before it fully honors max-width, which
+     is exactly what was inflating .presence-bar's height. */
+  max-width: 260px;
+  flex-shrink: 0;
   white-space: nowrap;
 }
 
 .state-select span {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .state-select.is-idle {
