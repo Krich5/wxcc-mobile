@@ -342,6 +342,20 @@ button.primary:disabled {
   flex-shrink: 0;
 }
 
+.presence-bar-call {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  flex-shrink: 0;
+  padding: 0;
+}
+
 .hamburger {
   width: 36px;
   height: 36px;
