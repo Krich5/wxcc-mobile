@@ -8,6 +8,7 @@ import {
   checkExistingSession,
   rememberMySessionId,
   isMySessionStillActive,
+  findWrapUpTask,
 } from '../wxcc/dashboard.js';
 import { clearTokenCookie } from '../session.js';
 import { revokeWebexTokens } from './auth.js';
@@ -107,6 +108,16 @@ router.get('/active-call', async (req, res) => {
   try {
     const call = await getActiveCall(req.session);
     res.json({ ok: true, call });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
+router.get('/wrapup-task', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, taskId: null });
+  try {
+    const taskId = await findWrapUpTask(req.session);
+    res.json({ ok: true, taskId });
   } catch (err) {
     res.status(502).json({ ok: false, error: err.message });
   }

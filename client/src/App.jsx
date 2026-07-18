@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { api } from './lib/api.js';
 import { useSession } from './context/SessionContext.jsx';
 import { LoginScreen } from './components/LoginScreen.jsx';
 import { PresenceBar } from './components/PresenceBar.jsx';
@@ -39,6 +40,26 @@ export default function App() {
       .then(setNotificationsEnabled)
       .catch(() => {});
   }, []);
+
+  const attemptedWrapupRecoveryRef = useRef(false);
+  useEffect(() => {
+    if (self?.state !== 'wrapUp') {
+      attemptedWrapupRecoveryRef.current = false;
+      return;
+    }
+    if (session.currentTask || endedTaskId || attemptedWrapupRecoveryRef.current) return;
+    attemptedWrapupRecoveryRef.current = true;
+    // Recovers from a page reload that happens mid wrap-up: session.currentTask (what
+    // WrapUpModal normally keys off of) is client-only state that resets on reload, so a
+    // real wrap-up in progress -- confirmed independently via the header's own state
+    // reconciliation -- would otherwise have no taskId left to submit against, leaving
+    // the agent stuck showing "Wrap-up" with no way to actually clear it.
+    api('/api/agent/wrapup-task')
+      .then(({ taskId }) => {
+        if (taskId) markEnded(taskId);
+      })
+      .catch(() => {});
+  }, [self?.state, session.currentTask, endedTaskId, markEnded]);
 
   if (loading) {
     return (

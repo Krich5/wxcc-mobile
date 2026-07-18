@@ -341,6 +341,42 @@ export async function getActiveCall(session) {
   };
 }
 
+function buildRecentTasksQuery(fromMs, toMs, ownerId, cursor = '0') {
+  // Deliberately no isActive filter, unlike buildActiveCallQuery -- a task can still be
+  // mid wrap-up after its isActive flag has already flipped false, so filtering on it
+  // risked missing exactly the task findWrapUpTask() below exists to find.
+  return `{
+  taskDetails(
+    from: ${Math.floor(fromMs)}
+    to: ${Math.floor(toMs)}
+    filter: { and: [
+      { owner: { id: { equals: "${ownerId}" } } }
+    ] }
+    pagination: { cursor: "${cursor}" }
+  ) {
+    tasks { id status createdTime }
+    pageInfo { hasNextPage endCursor }
+  }
+}`;
+}
+
+export async function findWrapUpTask(session) {
+  // Recovery path for a page reload that happens mid wrap-up: session.currentTask (the
+  // websocket-driven task object WrapUpModal normally keys off of) is client-only state
+  // that resets on reload, so a real wrap-up in progress -- confirmed independently via
+  // the agent's own session-state bucket, which comes from agentSession, not taskDetails
+  // -- would otherwise have no taskId left to submit against, leaving the agent stuck.
+  const ctx = await resolveAgentContext(session);
+  const now = Date.now();
+  const fromMs = now - 4 * 60 * 60 * 1000;
+  const data = await runGraphQL(session, buildRecentTasksQuery(fromMs, now, ctx.agentId));
+  const tasks = data?.taskDetails?.tasks || [];
+  const wrapupTasks = tasks
+    .filter((t) => (t?.status || '').toLowerCase().includes('wrap'))
+    .sort((a, b) => (b?.createdTime || 0) - (a?.createdTime || 0));
+  return wrapupTasks[0]?.id || null;
+}
+
 async function fetchAllTaskPages(session, buildQuery, fromMs, toMs) {
   const allTasks = [];
   const seenTaskIds = new Set();
