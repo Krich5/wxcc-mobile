@@ -50,7 +50,7 @@ export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
             type="tel"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            placeholder="3866314619"
+            placeholder="5551234567"
             autoFocus
             required
           />
