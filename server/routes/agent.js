@@ -197,6 +197,19 @@ router.get('/teams', async (req, res) => {
   }
 });
 
+router.get('/desktop-branding', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, appTitle: null, logo: null });
+  try {
+    const branding = await live.getDesktopBranding(req.session);
+    res.json({ ok: true, appTitle: branding?.appTitle || null, logo: branding?.logo || null });
+  } catch (err) {
+    // Purely cosmetic (header title/logo) -- never surface this as an error toast, just
+    // log it and fall back to the app's own defaults client-side.
+    console.error('[desktop-branding] failed:', err.message);
+    res.json({ ok: true, appTitle: null, logo: null });
+  }
+});
+
 router.get('/idle-codes', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, codes: [] });
   try {

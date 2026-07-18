@@ -144,6 +144,38 @@ export async function loadAgentProfile(session) {
   return session.agentProfileData;
 }
 
+export async function getDesktopBranding(session) {
+  // Confirmed via curl against this org: GET /v2/team?filter=id=="{teamId}" ->
+  // team.desktopLayoutId -> GET /desktop-layout/{desktopLayoutId} ->
+  // .jsonFileContent (a JSON-encoded STRING, not an object -- needs its own JSON.parse)
+  // -> .agent.appTitle / .agent.logo. Purely cosmetic (header title + logo), so any
+  // missing piece along this chain just falls back to null rather than throwing --
+  // callers should fall back to the app's own defaults, never surface this as an error.
+  if (session.desktopBranding !== undefined) return session.desktopBranding;
+  const teamId = session.profile?.teamId;
+  if (!teamId) return (session.desktopBranding = null);
+  const ctx = await resolveAgentContext(session);
+  const teamData = await authedFetch(
+    session,
+    `/organization/${ctx.orgId}/v2/team?filter=${encodeURIComponent(`id=="${teamId}"`)}`
+  );
+  const desktopLayoutId = teamData?.data?.[0]?.desktopLayoutId;
+  if (!desktopLayoutId) return (session.desktopBranding = null);
+  const layout = await authedFetch(session, `/organization/${ctx.orgId}/desktop-layout/${desktopLayoutId}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(layout?.jsonFileContent || '{}');
+  } catch {
+    return (session.desktopBranding = null);
+  }
+  const agentCfg = parsed?.agent || {};
+  session.desktopBranding = {
+    appTitle: agentCfg.appTitle || null,
+    logo: agentCfg.logo || null,
+  };
+  return session.desktopBranding;
+}
+
 async function resolveCodeNames(session, ids) {
   if (!ids?.length) return [];
   // Confirmed: idle codes and wrap-up codes are both drawn from the same Auxiliary

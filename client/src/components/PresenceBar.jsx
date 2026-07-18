@@ -29,6 +29,17 @@ export function PresenceBar({
   const [stateMenuOpen, setStateMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [, forceTick] = useState(0);
+  const [branding, setBranding] = useState(null); // { appTitle, logo } from the team's desktop layout
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    if (session.mode !== 'live') return;
+    // Purely cosmetic -- one fetch, no retry, and any failure is already reduced to
+    // { appTitle: null, logo: null } server-side, so this never needs a notice/toast.
+    api('/api/agent/desktop-branding')
+      .then(({ appTitle, logo }) => setBranding({ appTitle, logo }))
+      .catch(() => {});
+  }, [session.mode]);
 
   useEffect(() => {
     if (session.mode !== 'live') return;
@@ -158,8 +169,13 @@ export function PresenceBar({
     <>
       <header className="presence-bar">
         <div className="presence-bar-team">
-          <img className="presence-bar-logo" src="/icons/logo.png" alt="" />
-          <span>{session.profile?.teamName || 'Agent'}</span>
+          <img
+            className="presence-bar-logo"
+            src={branding?.logo && !logoFailed ? branding.logo : '/icons/logo.png'}
+            onError={() => setLogoFailed(true)}
+            alt=""
+          />
+          <span>{branding?.appTitle || session.profile?.teamName || 'Agent'}</span>
         </div>
         <div className="presence-bar-actions">
           <div className="state-dropdown">
