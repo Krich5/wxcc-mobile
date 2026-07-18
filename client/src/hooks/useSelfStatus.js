@@ -55,19 +55,22 @@ export function useSelfStatus(mode) {
     return () => clearInterval(interval);
   }, [mode, reload]);
 
-  // Optimistically zero the ticker right after a local state change, without waiting for
-  // a fresh poll to confirm it (the poll itself is deliberately delayed elsewhere to
-  // avoid racing WxCC's own backend propagation lag). Also patches this agent's own row
-  // in `agents` (matched via self.id) so the roster doesn't keep showing the stale
-  // pre-switch duration for those same few seconds while only the header updates.
-  const resetDuration = useCallback(() => {
+  // Optimistically zero the ticker (and, via `patch`, the state/stateLabel/idleCode
+  // label) right after a local state change, without waiting for a fresh poll to confirm
+  // it (the poll itself is deliberately delayed elsewhere to avoid racing WxCC's own
+  // backend propagation lag). Also patches this agent's own row in `agents` (matched via
+  // self.id) so the roster doesn't keep showing the stale pre-switch duration OR label
+  // for those same few seconds while only the header updates -- previously only
+  // durationSec was reset here, so e.g. switching Presenting -> Meeting showed the new
+  // duration instantly but kept the OLD idle-code name/label until the delayed reload.
+  const resetDuration = useCallback((patch) => {
     resetAtMsRef.current = Date.now();
     setFetchedAtMs(Date.now());
     setDashboard((d) => {
       if (!d?.self) return d;
-      const nextSelf = { ...d.self, durationSec: 0 };
+      const nextSelf = { ...d.self, durationSec: 0, ...patch };
       const agents = Array.isArray(d.agents)
-        ? d.agents.map((a) => (a.id === d.self.id ? { ...a, durationSec: 0 } : a))
+        ? d.agents.map((a) => (a.id === d.self.id ? { ...a, durationSec: 0, ...patch } : a))
         : d.agents;
       return { ...d, self: nextSelf, agents };
     });

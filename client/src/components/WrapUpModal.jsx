@@ -59,7 +59,7 @@ export function WrapUpModal({ task, onDone, reloadSelf, resetSelfDuration }) {
       // reconciliation effect in PresenceBar corrects this if the guess was wrong,
       // instead of leaving a stale/incorrect state up to a full poll cycle.
       setSession((s) => ({ ...s, currentTask: null, agentState: 'Available' }));
-      resetSelfDuration?.();
+      resetSelfDuration?.({ state: 'available', stateLabel: 'Available', idleCode: '—', totalIdleSec: null });
       setTimeout(() => reloadSelf?.(), 3000);
       onDone?.();
     } catch (err) {

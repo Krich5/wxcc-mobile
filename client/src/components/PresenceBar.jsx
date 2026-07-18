@@ -146,9 +146,13 @@ export function PresenceBar({
       const next = `Idle: ${label}`;
       setSession((s) => (s.agentState === next ? s : { ...s, agentState: next }));
     }
-    // Deliberately keyed on the state fields, not the `self` object reference: resetSelfDuration()
-    // replaces `self` with a new object that only zeroes durationSec, which would otherwise re-run
-    // this effect against the still-stale state and stomp the optimistic update in applyState().
+    // Deliberately keyed on the state fields, not the `self` object reference:
+    // resetSelfDuration() replaces `self` with a new object on every call (now patched
+    // with the new state/idleCode/stateLabel too, not just durationSec) -- keying on the
+    // object reference would re-run this effect on every call as much as on a real
+    // change. Since the patch already matches what applyState() just set via
+    // setSession, this just no-ops in that case; it does real work once the delayed
+    // reload confirms (or corrects) it from the server.
   }, [self?.state, self?.idleCode, self?.stateLabel, setSession]);
 
   useEffect(() => {
@@ -159,6 +163,7 @@ export function PresenceBar({
   const applyState = async (value) => {
     setStateMenuOpen(false);
     if (value.startsWith('current:')) return; // placeholder option, not a real choice
+    const wasAvailable = isAvailable; // capture before this switch changes it
     if (value === 'Available') {
       try {
         await api('/api/agent/state', { method: 'POST', body: JSON.stringify({ state: 'Available' }) });
@@ -168,8 +173,9 @@ export function PresenceBar({
         // change we JUST made shows up there, so reconciling synchronously here would
         // read back the still-stale PREVIOUS state and stomp this optimistic update. A
         // short delay avoids racing that lag while still confirming much sooner than the
-        // full poll interval.
-        resetSelfDuration?.();
+        // full poll interval. The patch also updates state/stateLabel/idleCode (not just
+        // the timer) so the roster's label doesn't lag a few seconds behind the header.
+        resetSelfDuration?.({ state: 'available', stateLabel: 'Available', idleCode: '—', totalIdleSec: null });
         setTimeout(() => reloadSelf?.(), 3000);
       } catch (err) {
         setNotice(err.message);
@@ -184,7 +190,15 @@ export function PresenceBar({
         body: JSON.stringify({ state: 'Idle', auxCodeId: code.id, reason: code.name }),
       });
       setSession((s) => ({ ...s, agentState: `Idle: ${code.name}` }));
-      resetSelfDuration?.();
+      // totalIdleSec only resets to 0 when this is a FRESH idle stretch (coming from
+      // Available) -- switching between idle reasons (Lunch -> Meeting) should keep it
+      // accumulating, so it's deliberately left out of the patch in that case.
+      resetSelfDuration?.({
+        state: 'idle',
+        stateLabel: code.name,
+        idleCode: code.name,
+        ...(wasAvailable ? { totalIdleSec: 0 } : {}),
+      });
       setTimeout(() => reloadSelf?.(), 3000);
     } catch (err) {
       setNotice(err.message);
