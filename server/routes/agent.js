@@ -145,6 +145,16 @@ router.get('/address-book', async (req, res) => {
   }
 });
 
+router.get('/entry-points', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, entryPoints: [] });
+  try {
+    const entryPoints = await live.getEntryPoints(req.session);
+    res.json({ ok: true, entryPoints });
+  } catch (err) {
+    res.status(502).json({ ok: false, error: err.message });
+  }
+});
+
 router.get('/existing-session', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, alreadyLoggedIn: false });
   try {
@@ -333,6 +343,24 @@ router.post('/tasks/:id/hold', async (req, res) => {
 router.post('/tasks/:id/unhold', async (req, res) => {
   try {
     const data = await providerFor(req.session).unholdTask(req.session, req.params.id);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/record/pause', async (req, res) => {
+  try {
+    const data = await providerFor(req.session).pauseRecording(req.session, req.params.id);
+    res.json({ ok: true, ...data });
+  } catch (err) {
+    res.status(409).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/tasks/:id/record/resume', async (req, res) => {
+  try {
+    const data = await providerFor(req.session).resumeRecording(req.session, req.params.id);
     res.json({ ok: true, ...data });
   } catch (err) {
     res.status(409).json({ ok: false, error: err.message });

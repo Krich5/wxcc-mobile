@@ -361,6 +361,31 @@ export async function getAddressBookEntries(session) {
   return entries;
 }
 
+export async function getEntryPoints(session) {
+  // Confirmed: GET /organization/{orgId}/v2/entry-point, paginated the same way as the
+  // address book. Only telephony entry points make sense as a consult/transfer
+  // destination for a voice call -- chat/email entry points are filtered out here rather
+  // than left for the client to sort through.
+  if (session.entryPoints) return session.entryPoints;
+  const ctx = await resolveAgentContext(session);
+  const entryPoints = [];
+  let page = 0;
+  let totalPages = 1;
+  do {
+    const data = await authedFetch(
+      session,
+      `/organization/${ctx.orgId}/v2/entry-point?page=${page}&pageSize=100&sortOrder=asc`
+    );
+    (data?.data || [])
+      .filter((e) => e.channelType === 'TELEPHONY' && e.active)
+      .forEach((e) => entryPoints.push({ id: e.id, name: e.name }));
+    totalPages = data?.meta?.totalPages || 1;
+    page += 1;
+  } while (page < totalPages && page < 50);
+  session.entryPoints = entryPoints;
+  return entryPoints;
+}
+
 export async function getWrapUpSettings(session) {
   const profile = await loadAgentProfile(session);
   // Confirmed: agent-profile.autoWrapAfterSeconds is actually in MILLISECONDS despite
@@ -484,6 +509,25 @@ export async function unholdTask(session, taskId) {
   return authedFetch(session, `/v1/tasks/${taskId}/unhold`, {
     method: 'POST',
     body: JSON.stringify({ mediaResourceId: taskId }),
+  });
+}
+
+export async function pauseRecording(session, taskId) {
+  // Confirmed via a live HAR capture of Cisco's own "EPIC" widget: POST
+  // /v1/tasks/{taskId}/record/pause with an empty body.
+  return authedFetch(session, `/v1/tasks/${taskId}/record/pause`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function resumeRecording(session, taskId) {
+  // Confirmed via the same capture: POST /v1/tasks/{taskId}/record/resume with
+  // {autoResumed: false} -- the flag distinguishes a manual agent resume from WxCC's own
+  // auto-resume (e.g. after a compliance pause window expires).
+  return authedFetch(session, `/v1/tasks/${taskId}/record/resume`, {
+    method: 'POST',
+    body: JSON.stringify({ autoResumed: false }),
   });
 }
 

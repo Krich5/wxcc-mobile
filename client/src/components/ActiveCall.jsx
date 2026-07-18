@@ -14,15 +14,24 @@ function formatElapsed(totalSeconds) {
 export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) {
   const [, forceTick] = useState(0);
   const [onHold, setOnHold] = useState(false);
+  // Purely optimistic -- unlike Hold, there's no confirmed field on the polled call/task
+  // data to reconcile a recording-paused state against, so this just reflects the last
+  // button the agent pressed.
+  const [recordingPaused, setRecordingPaused] = useState(false);
   const [pendingAction, setPendingAction] = useState(null); // 'consult' | 'transfer' | null
-  const [destType, setDestType] = useState('dialNumber'); // 'dialNumber' | 'agent'
+  const [destType, setDestType] = useState('dialNumber'); // 'dialNumber' | 'agent' | 'entryPoint'
   const [destNumber, setDestNumber] = useState('');
   const [agentId, setAgentId] = useState('');
+  const [entryPointId, setEntryPointId] = useState('');
   // Lazily loaded (and cached) the first time the agent switches to the Agent tab --
   // agent-profile.buddyTeams/userIds rarely change mid-shift, so no need to re-fetch per
   // call.
   const [agents, setAgents] = useState(null);
   const [agentsError, setAgentsError] = useState(null);
+  // Same lazy-load-and-cache pattern as agents -- the org's entry points don't change
+  // mid-shift either.
+  const [entryPoints, setEntryPoints] = useState(null);
+  const [entryPointsError, setEntryPointsError] = useState(null);
   // Same lazy-load-and-cache pattern as agents -- the org address book doesn't change
   // mid-shift either.
   const [addressBook, setAddressBook] = useState(null);
@@ -64,10 +73,12 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
       setDestType('dialNumber');
       setDestNumber('');
       setAgentId('');
+      setEntryPointId('');
       setInConsult(false);
       setConsultTo('');
       setConsultLabel('');
       setConsultStartedAtMs(null);
+      setRecordingPaused(false);
       setError(null);
     }
   }, [call?.id]);
@@ -115,6 +126,11 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     if (ok) setOnHold(!onHold);
   };
 
+  const toggleRecording = async () => {
+    const ok = await runAction(recordingPaused ? 'record/resume' : 'record/pause');
+    if (ok) setRecordingPaused(!recordingPaused);
+  };
+
   const endCall = async () => {
     const ok = await runAction('end');
     // Don't wait for the next poll to notice the call is gone -- the API call
@@ -127,6 +143,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     setDestType('dialNumber');
     setDestNumber('');
     setAgentId('');
+    setEntryPointId('');
     setPendingAction((current) => (current === action ? null : action));
     if (addressBook === null && !addressBookError) {
       api('/api/agent/address-book')
@@ -153,18 +170,32 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
     }
   };
 
+  const selectEntryPointType = () => {
+    setDestType('entryPoint');
+    if (entryPoints === null && !entryPointsError) {
+      api('/api/agent/entry-points')
+        .then(({ entryPoints: list }) => setEntryPoints(list || []))
+        .catch((err) => {
+          setEntryPointsError(err.message);
+          setEntryPoints([]);
+        });
+    }
+  };
+
   const isAgentAvailable = (a) => a.state?.toLowerCase() === 'available';
   // Consulting an idle agent is supported; transferring is not -- restrict the picker
   // accordingly rather than let the agent pick a target that's guaranteed to fail.
   const visibleAgents = (agents || []).filter((a) => pendingAction === 'consult' || isAgentAvailable(a));
 
   const submitPendingAction = async () => {
-    const to = destType === 'agent' ? agentId : destNumber.trim();
+    const to = destType === 'agent' ? agentId : destType === 'entryPoint' ? entryPointId : destNumber.trim();
     if (!to) return;
     const label =
       destType === 'agent'
         ? agents?.find((a) => a.id === to)?.name || to
-        : addressBook?.find((e) => e.number === to)?.name || to;
+        : destType === 'entryPoint'
+          ? entryPoints?.find((e) => e.id === to)?.name || to
+          : addressBook?.find((e) => e.number === to)?.name || to;
     const ok = await runAction(pendingAction, { body: JSON.stringify({ to, destinationType: destType }) });
     if (ok) {
       if (pendingAction === 'consult') {
@@ -182,6 +213,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
       setDestType('dialNumber');
       setDestNumber('');
       setAgentId('');
+      setEntryPointId('');
     }
   };
 
@@ -273,6 +305,9 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
             <button className="pill" onClick={toggleHold} disabled={busy}>
               {onHold ? 'Unhold' : 'Hold'}
             </button>
+            <button className="pill" onClick={toggleRecording} disabled={busy}>
+              {recordingPaused ? 'Resume Recording' : 'Pause Recording'}
+            </button>
             <button
               className={`pill ${pendingAction === 'consult' ? 'active' : ''}`}
               onClick={() => togglePendingAction('consult')}
@@ -305,6 +340,13 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                 <button type="button" className={`pill ${destType === 'agent' ? 'active' : ''}`} onClick={selectAgentType}>
                   Agent
                 </button>
+                <button
+                  type="button"
+                  className={`pill ${destType === 'entryPoint' ? 'active' : ''}`}
+                  onClick={selectEntryPointType}
+                >
+                  Entry Point
+                </button>
               </div>
 
               {destType === 'dialNumber' ? (
@@ -327,6 +369,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                         setDestType('dialNumber');
                         setDestNumber('');
                         setAgentId('');
+                        setEntryPointId('');
                       }}
                     >
                       Cancel
@@ -344,7 +387,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                   )}
                   {addressBookError && <p className="error">{addressBookError}</p>}
                 </>
-              ) : (
+              ) : destType === 'agent' ? (
                 <>
                   {agentsError && <p className="error">{agentsError}</p>}
                   {!agentsError && agents === null && <p className="hint">Loading agents…</p>}
@@ -378,6 +421,45 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
                         setDestType('dialNumber');
                         setDestNumber('');
                         setAgentId('');
+                        setEntryPointId('');
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {entryPointsError && <p className="error">{entryPointsError}</p>}
+                  {!entryPointsError && entryPoints === null && <p className="hint">Loading entry points…</p>}
+                  {!entryPointsError && entryPoints !== null && entryPoints.length === 0 && (
+                    <p className="hint">No entry points found.</p>
+                  )}
+                  {entryPoints?.length > 0 && (
+                    <ul className="agent-picker-list">
+                      {entryPoints.map((e) => (
+                        <li
+                          key={e.id}
+                          className={entryPointId === e.id ? 'active' : ''}
+                          onClick={() => setEntryPointId(e.id)}
+                        >
+                          <span className="agent-picker-name">{e.name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="active-call-dest-row">
+                    <button className="primary" onClick={submitPendingAction} disabled={busy || !entryPointId}>
+                      {pendingAction === 'consult' ? 'Consult' : 'Transfer'}
+                    </button>
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setPendingAction(null);
+                        setDestType('dialNumber');
+                        setDestNumber('');
+                        setAgentId('');
+                        setEntryPointId('');
                       }}
                     >
                       Cancel

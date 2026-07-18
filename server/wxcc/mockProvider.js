@@ -85,6 +85,14 @@ export function unholdTask(session, taskId) {
   return { taskId, held: false };
 }
 
+export function pauseRecording(session, taskId) {
+  return { taskId, recordingPaused: true };
+}
+
+export function resumeRecording(session, taskId) {
+  return { taskId, recordingPaused: false };
+}
+
 export function consultTask(session, taskId, to, destinationType) {
   return { taskId, to, destinationType };
 }
