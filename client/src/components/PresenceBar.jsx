@@ -4,6 +4,7 @@ import { useSession } from '../context/SessionContext.jsx';
 import { APP_VERSION } from '../version.js';
 import { formatElapsed } from '../lib/time.js';
 import { applyTheme, getStoredTheme } from '../lib/theme.js';
+import { ProfileSettingsModal } from './ProfileSettingsModal.jsx';
 
 function SunIcon() {
   return (
@@ -59,6 +60,7 @@ export function PresenceBar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [stateMenuOpen, setStateMenuOpen] = useState(false);
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   const [, forceTick] = useState(0);
   const [branding, setBranding] = useState(null); // { appTitle, logo } from the team's desktop layout
   const [logoFailed, setLogoFailed] = useState(false);
@@ -328,6 +330,17 @@ export function PresenceBar({
                   <p className="side-panel-name">{identity.displayName}</p>
                 </div>
               )}
+              <button
+                type="button"
+                className="side-panel-settings-row"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setProfileSettingsOpen(true);
+                }}
+              >
+                Profile Settings
+                <span className="side-panel-settings-chevron">›</span>
+              </button>
               <div className="side-panel-field">
                 <span className="side-panel-label">Team</span>
                 <span className="side-panel-value">{session.profile?.teamName || '—'}</span>
@@ -397,6 +410,8 @@ export function PresenceBar({
           </div>
         </div>
       )}
+
+      {profileSettingsOpen && <ProfileSettingsModal onClose={() => setProfileSettingsOpen(false)} />}
     </>
   );
 }

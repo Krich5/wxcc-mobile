@@ -475,6 +475,24 @@ button.primary:disabled {
   font-weight: 700;
 }
 
+.side-panel-settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.side-panel-settings-chevron {
+  font-size: 1.2rem;
+  color: var(--text-dim);
+}
+
 .side-panel-field {
   display: flex;
   flex-direction: column;
@@ -1101,6 +1119,34 @@ button.link {
   background: var(--text);
   color: var(--bg-elevated);
   font-weight: 600;
+}
+
+.profile-settings-card {
+  text-align: left;
+}
+
+.profile-settings-card h2 {
+  margin: 0 0 20px;
+  text-align: center;
+}
+
+.profile-settings-card .field {
+  margin: 0 0 16px;
+  max-width: none;
+}
+
+.profile-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.profile-settings-actions button {
+  width: auto;
+  max-width: none;
+  padding: 10px 20px;
+  border-radius: 999px;
 }
 
 .incoming-call .pulse-ring {
