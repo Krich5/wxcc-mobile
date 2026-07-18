@@ -510,7 +510,15 @@ export async function startOutdial(session, { destination, ani }) {
 export async function answerTask(session, taskId) {
   // TODO verify against the Call Control REST APIs (accept/answer contact).
   const data = await authedFetch(session, `/v2/agents/contact/${taskId}/accept`, { method: 'POST' });
-  if (session.currentTask?.id === taskId) session.currentTask.status = 'connected';
+  if (session.currentTask?.id === taskId) {
+    session.currentTask.status = 'connected';
+    // Return the ORIGINAL offered task (ani/queue/call variables, all sourced from the
+    // real-time offer notification) with status flipped, not the bare accept response --
+    // the client replaces its local task with whatever this returns, so returning `data`
+    // here was silently wiping out everything the offer notification carried the moment
+    // the agent answered.
+    return session.currentTask;
+  }
   return data;
 }
 
@@ -668,7 +676,17 @@ export async function subscribeNotifications(session) {
     }
     console.log('[wxcc notification]', JSON.stringify(msg));
     session.emitter.emit('raw-notification', msg);
-    if (msg?.type === 'AgentContactEvent' && msg?.eventType === 'ContactOffered') {
+    // Confirmed via a live capture's own telemetry beacons (WXCC_SDK_WEBSOCKET_EVENT_RECEIVED,
+    // tags.top_level_type/ws_event_type): a real incoming-call notification is envelope
+    // type "RoutingMessage" with the specific event name in data.type -- "AgentContactReserved"
+    // fires first (the reservation), "AgentOfferContact" right after (the actual offer this
+    // agent sees) -- not the guessed "AgentContactEvent"/"ContactOffered" this originally
+    // checked for, which is why the offer flow never fired in live mode before this. Matches
+    // the same envelope shape already confirmed for AGENT_MULTI_LOGIN (outer type = broad
+    // category, data.type = the specific event), rather than a directly-observed offer frame,
+    // so treat this as informed-but-not-fully-confirmed until the next live call's raw
+    // [wxcc notification] log lines are checked against it.
+    if (msg?.type === 'RoutingMessage' && (msg?.data?.type === 'AgentOfferContact' || msg?.data?.type === 'AgentContactReserved')) {
       session.currentTask = msg.data;
       session.emitter.emit('task:offered', msg.data);
     }

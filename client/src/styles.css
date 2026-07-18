@@ -1294,6 +1294,53 @@ button.link {
   color: white;
 }
 
+.call-details {
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+  text-align: left;
+  width: 100%;
+}
+
+.call-details-label {
+  margin: 0 0 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.call-details-group {
+  margin: 8px 0;
+}
+
+.call-details-group-label {
+  margin: 0 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.call-details-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--overlay-stripe);
+}
+
+.call-details-row span:first-child {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.call-details-row span:last-child {
+  text-align: right;
+  word-break: break-word;
+}
+
 .call-screen {
   gap: 8px;
 }

@@ -1,5 +1,6 @@
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
+import { CallDetails } from './CallDetails.jsx';
 
 export function IncomingTaskModal({ task }) {
   const { setSession } = useSession();
@@ -29,6 +30,7 @@ export function IncomingTaskModal({ task }) {
             Answer
           </button>
         </div>
+        <CallDetails task={task} />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
+import { CallDetails } from './CallDetails.jsx';
 
 export function CallScreen({ task }) {
   const { setSession } = useSession();
@@ -35,6 +36,7 @@ export function CallScreen({ task }) {
           End
         </button>
       </div>
+      <CallDetails task={task} />
     </div>
   );
 }
