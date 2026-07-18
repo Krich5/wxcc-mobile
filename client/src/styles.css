@@ -412,6 +412,36 @@ button.primary:disabled {
   margin-top: 12px;
 }
 
+.side-panel-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.side-panel-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.side-panel-avatar-initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--text-dim);
+  color: var(--bg-elevated);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.side-panel-name {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
 .side-panel-field {
   display: flex;
   flex-direction: column;

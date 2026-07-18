@@ -59,9 +59,21 @@ async function resolveOrgId(session) {
   // owner's org, which is simply wrong for any other agent/org.
   if (session.wxccOrgId) return session.wxccOrgId;
   const me = await webexPeopleMe(session);
+  session.webexProfile = me;
   session.wxccOrgId = decodeSparkId(me.orgId);
   session.wxccCiUserId = decodeSparkId(me.id);
   return session.wxccOrgId;
+}
+
+export async function getWebexIdentity(session) {
+  // displayName/avatar straight from Webex's own /v1/people/me (session.webexProfile,
+  // cached by resolveOrgId() above the first time it runs) -- not the WxCC agent record,
+  // which has no avatar field at all.
+  await resolveOrgId(session);
+  return {
+    displayName: session.webexProfile?.displayName || null,
+    avatar: session.webexProfile?.avatar || null,
+  };
 }
 
 export async function resolveAgentContext(session) {

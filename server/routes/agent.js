@@ -210,6 +210,18 @@ router.get('/desktop-branding', async (req, res) => {
   }
 });
 
+router.get('/identity', async (req, res) => {
+  if (req.session.mode !== 'live') return res.json({ ok: true, displayName: null, avatar: null });
+  try {
+    const identity = await live.getWebexIdentity(req.session);
+    res.json({ ok: true, ...identity });
+  } catch (err) {
+    // Purely cosmetic (hamburger menu header) -- never surface this as an error toast.
+    console.error('[identity] failed:', err.message);
+    res.json({ ok: true, displayName: null, avatar: null });
+  }
+});
+
 router.get('/idle-codes', async (req, res) => {
   if (req.session.mode !== 'live') return res.json({ ok: true, codes: [] });
   try {

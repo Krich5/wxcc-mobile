@@ -29,6 +29,13 @@ function MoonIcon() {
   );
 }
 
+function getInitials(name) {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export function PresenceBar({
   onOpenCallLog,
   self,
@@ -46,6 +53,8 @@ export function PresenceBar({
   const [, forceTick] = useState(0);
   const [branding, setBranding] = useState(null); // { appTitle, logo } from the team's desktop layout
   const [logoFailed, setLogoFailed] = useState(false);
+  const [identity, setIdentity] = useState(null); // { displayName, avatar } from Webex's own /v1/people/me
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [theme, setTheme] = useState(getStoredTheme);
 
   const selectTheme = (next) => {
@@ -60,6 +69,13 @@ export function PresenceBar({
     // { appTitle: null, logo: null } server-side, so this never needs a notice/toast.
     api('/api/agent/desktop-branding')
       .then(({ appTitle, logo }) => setBranding({ appTitle, logo }))
+      .catch(() => {});
+  }, [session.mode]);
+
+  useEffect(() => {
+    if (session.mode !== 'live') return;
+    api('/api/agent/identity')
+      .then(({ displayName, avatar }) => setIdentity({ displayName, avatar }))
       .catch(() => {});
   }, [session.mode]);
 
@@ -241,6 +257,23 @@ export function PresenceBar({
               &times;
             </button>
             <div className="side-panel-content">
+              {identity?.displayName && (
+                <div className="side-panel-identity">
+                  {identity.avatar && !avatarFailed ? (
+                    <img
+                      className="side-panel-avatar"
+                      src={identity.avatar}
+                      onError={() => setAvatarFailed(true)}
+                      alt=""
+                    />
+                  ) : (
+                    <div className="side-panel-avatar side-panel-avatar-initials">
+                      {getInitials(identity.displayName)}
+                    </div>
+                  )}
+                  <p className="side-panel-name">{identity.displayName}</p>
+                </div>
+              )}
               <div className="side-panel-field">
                 <span className="side-panel-label">Team</span>
                 <span className="side-panel-value">{session.profile?.teamName || '—'}</span>
