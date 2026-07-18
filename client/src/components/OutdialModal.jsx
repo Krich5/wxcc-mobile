@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 
-export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
+export function OutdialModal({ onClose, onActionTaken, onCallStarted, headerHeight = 0 }) {
   const [destination, setDestination] = useState('');
   // Lazily loaded from this agent's profile -- most profiles have zero or one caller-ID
   // option configured (outdialANIId absent), in which case the picker is hidden entirely
@@ -59,9 +59,20 @@ export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
   };
 
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className="overlay outdial-overlay" style={{ top: headerHeight }} onClick={onClose}>
       <form className="card profile-settings-card" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h2>New Call</h2>
+        <label className="field">
+          Phone number
+          <input
+            type="tel"
+            value={destination}
+            onChange={(e) => setDestination(e.target.value)}
+            placeholder="5551234567"
+            autoFocus
+            required
+          />
+        </label>
         {anis && anis.length > 0 && (
           <label className="field">
             Outdial ANI
@@ -77,17 +88,6 @@ export function OutdialModal({ onClose, onActionTaken, onCallStarted }) {
             </select>
           </label>
         )}
-        <label className="field">
-          Phone number
-          <input
-            type="tel"
-            value={destination}
-            onChange={(e) => setDestination(e.target.value)}
-            placeholder="5551234567"
-            autoFocus
-            required
-          />
-        </label>
         {error && <p className="error">{error}</p>}
         <div className="profile-settings-actions">
           <button className="secondary" type="button" onClick={onClose}>

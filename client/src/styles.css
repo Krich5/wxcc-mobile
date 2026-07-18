@@ -1099,6 +1099,16 @@ button.link {
   z-index: 30;
 }
 
+/* Anchored below the header (top set inline from the same measured headerHeight the
+   hamburger panel uses) rather than covering it -- and a lighter dim than the default
+   overlay, since this sits right under the header instead of over the whole screen. */
+.outdial-overlay {
+  align-items: flex-start;
+  justify-content: center;
+  background: rgba(6, 10, 20, 0.35);
+  padding-top: 16px;
+}
+
 .card {
   background: var(--bg-elevated);
   border-radius: 20px;

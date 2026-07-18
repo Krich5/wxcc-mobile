@@ -487,6 +487,7 @@ export function PresenceBar({
           onClose={() => setOutdialOpen(false)}
           onActionTaken={refreshActiveCall}
           onCallStarted={setOptimisticCall}
+          headerHeight={headerHeight}
         />
       )}
     </>
