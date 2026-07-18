@@ -262,8 +262,13 @@ export function PresenceBar({
   // are the same number by definition, so "Presenting 00:10 / 00:10" is just noise; the
   // total only becomes meaningful once there's been a PRIOR idle-code switch this same
   // stretch (e.g. Lunch -> Meeting), which is exactly when totalIdleSec > durationSec.
+  // The +5 tolerance (not a strict >) absorbs a few-second gap sometimes seen right after
+  // a fresh login -- likely a brief WxCC-internal setup activity logged just before
+  // "Login" formally starts, which the server's backward-walk correctly (if pedantically)
+  // counts as part of the same continuous idle stretch. Real, but not worth surfacing as
+  // "two different times" for what a person would call the very first idle reason.
   const totalIdleElapsed =
-    !isAvailable && self?.totalIdleSec != null && self.totalIdleSec > self.durationSec && fetchedAtMs != null
+    !isAvailable && self?.totalIdleSec != null && self.totalIdleSec > self.durationSec + 5 && fetchedAtMs != null
       ? formatElapsed(self.totalIdleSec + elapsedSinceFetch)
       : null;
   // Only the closed button shows elapsed time -- the open list just shows plain state

@@ -111,6 +111,31 @@ function buildSessionQuery(fromMs, toMs) {
 }`;
 }
 
+function buildTodaysAllSessionsQuery(fromMs, toMs) {
+  // Deliberately NO isActive filter (unlike buildSessionQuery above) -- this is the whole
+  // point: connectedCount/ronaCount reset to 0 on every fresh login (confirmed live), so
+  // getting a real full-day total means summing them across every one of today's
+  // sessions for an agent, not just whichever one is active right now. Also deliberately
+  // no agentId filter -- an earlier attempt at filtering this resource by agentId was
+  // never confirmed as a valid filter key here (see resolveAgentContext's own history)
+  // and broke the whole query; fetching everyone's sessions for today and summing by
+  // agentId in JS afterward is the same proven-safe pattern already used elsewhere in
+  // this file. Only the fields actually needed for that sum -- no `activities`, which
+  // would make this a much heavier query for data this function doesn't use.
+  return `{
+  agentSession(
+    from: ${Math.floor(fromMs)}
+    to: ${Math.floor(toMs)}
+    filter: { channelInfo: { channelType: { equals: "telephony" } } }
+  ) {
+    agentSessions {
+      agentId
+      channelInfo { channelType connectedCount ronaCount }
+    }
+  }
+}`;
+}
+
 function buildActiveCallQuery(fromMs, toMs, ownerId, cursor = '0') {
   // Confirmed against this org's own curl example: taskDetails (a different top-level
   // GraphQL field than task/agentSession above) filtered by owner.id -- this is the
@@ -346,6 +371,23 @@ async function fetchAgentSessions(session, fromMs, toMs) {
   return data?.agentSession?.agentSessions || [];
 }
 
+async function fetchTodaysHandledRonaTotals(session, fromMs, toMs) {
+  const data = await runGraphQL(session, buildTodaysAllSessionsQuery(fromMs, toMs));
+  const rows = data?.agentSession?.agentSessions || [];
+  const totals = new Map(); // agentId -> { handled, rona }
+  rows.forEach((s) => {
+    const channels = Array.isArray(s?.channelInfo) ? s.channelInfo : [s?.channelInfo].filter(Boolean);
+    const telCh = channels.find((c) => c?.channelType === 'telephony');
+    if (!telCh || !s?.agentId) return;
+    const prev = totals.get(s.agentId) || { handled: 0, rona: 0 };
+    totals.set(s.agentId, {
+      handled: prev.handled + (Number(telCh.connectedCount) || 0),
+      rona: prev.rona + (Number(telCh.ronaCount) || 0),
+    });
+  });
+  return totals;
+}
+
 function toSeconds(value) {
   if (typeof value !== 'number' || Number.isNaN(value)) return 0;
   return value > 1000 ? value / 1000 : value;
@@ -564,29 +606,31 @@ export async function getDashboard(session) {
   const now = Date.now();
   const fromMs = startOfToday();
 
-  const [queueNamesResp, teamNamesResp, parkedTasks, connectedTasks, dailyTasks, sessions] = await Promise.all([
-    queueIds.size
-      ? authedFetch(
-          session,
-          `/organization/${ctx.orgId}/v3/contact-service-queue?filter=${encodeURIComponent(
-            `id=in=(${[...queueIds].map((id) => `"${id}"`).join(',')})`
-          )}`,
-          { headers: { OrgId: ctx.orgId } }
-        )
-      : Promise.resolve(null),
-    teamIds.size
-      ? authedFetch(
-          session,
-          `/organization/${ctx.orgId}/v2/team?filter=${encodeURIComponent(
-            `id=in=(${[...teamIds].map((id) => `"${id}"`).join(',')})`
-          )}`
-        )
-      : Promise.resolve(null),
-    fetchAllTaskPages(session, buildParkedTaskQuery, fromMs, now),
-    fetchAllTaskPages(session, buildConnectedTaskQuery, fromMs, now),
-    fetchAllTaskPages(session, buildDailyTaskQuery, fromMs, now),
-    fetchAgentSessions(session, fromMs, now),
-  ]);
+  const [queueNamesResp, teamNamesResp, parkedTasks, connectedTasks, dailyTasks, sessions, handledRonaTotals] =
+    await Promise.all([
+      queueIds.size
+        ? authedFetch(
+            session,
+            `/organization/${ctx.orgId}/v3/contact-service-queue?filter=${encodeURIComponent(
+              `id=in=(${[...queueIds].map((id) => `"${id}"`).join(',')})`
+            )}`,
+            { headers: { OrgId: ctx.orgId } }
+          )
+        : Promise.resolve(null),
+      teamIds.size
+        ? authedFetch(
+            session,
+            `/organization/${ctx.orgId}/v2/team?filter=${encodeURIComponent(
+              `id=in=(${[...teamIds].map((id) => `"${id}"`).join(',')})`
+            )}`
+          )
+        : Promise.resolve(null),
+      fetchAllTaskPages(session, buildParkedTaskQuery, fromMs, now),
+      fetchAllTaskPages(session, buildConnectedTaskQuery, fromMs, now),
+      fetchAllTaskPages(session, buildDailyTaskQuery, fromMs, now),
+      fetchAgentSessions(session, fromMs, now),
+      fetchTodaysHandledRonaTotals(session, fromMs, now).catch(() => new Map()),
+    ]);
 
   const queueNameById = new Map((queueNamesResp?.data || []).map((q) => [q.id, q.name || q.customName || q.id]));
   const teamNameById = new Map((teamNamesResp?.data || []).map((t) => [t.id, t.name || t.id]));
@@ -639,6 +683,12 @@ export async function getDashboard(session) {
     const telCh = channels.find((c) => c?.channelType === 'telephony');
     const rowId = s?.agentId || `${s?.agentName}-${s?.teamId}`;
     const { durationSec, totalIdleSec } = getStateTimes(s);
+    // connectedCount/ronaCount reset to 0 on every fresh login (they're scoped to ONE
+    // session, confirmed live) -- handledRonaTotals sums them across every one of
+    // today's sessions per agent instead, so signing out and back in doesn't make these
+    // look like they reset. Falls back to this one session's own count only if that
+    // separate query didn't return anything for this agent (e.g. it failed entirely).
+    const dayTotal = s?.agentId ? handledRonaTotals.get(s.agentId) : null;
     return {
       id: rowId,
       team: teamNameById.get(s?.teamId) || s?.teamName || '—',
@@ -648,8 +698,8 @@ export async function getDashboard(session) {
       durationSec,
       totalIdleSec,
       idleCode: bucket === 'idle' ? telCh?.idleCodeName || '—' : '—',
-      handled: telCh?.connectedCount ?? '—',
-      rona: telCh?.ronaCount ?? '—',
+      handled: dayTotal?.handled ?? telCh?.connectedCount ?? '—',
+      rona: dayTotal?.rona ?? telCh?.ronaCount ?? '—',
     };
   });
   agentRows.sort((a, b) => a.team.localeCompare(b.team) || b.durationSec - a.durationSec);
