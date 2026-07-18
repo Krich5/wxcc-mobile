@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
-
-const POLL_MS = 15000;
+import { formatElapsed } from '../lib/time.js';
 
 const STAT_CARDS = [
   { key: 'waitingNow', label: 'Waiting Now' },
@@ -57,36 +55,14 @@ function StateDonut({ stateCounts }) {
   );
 }
 
-export function Dashboard({ refreshSignal }) {
+export function Dashboard({ data, error, fetchedAtMs }) {
   const { session } = useSession();
-  const [data, setData] = useState(null);
-  const [error, setError] = useState(null);
+  const [, forceTick] = useState(0);
 
   useEffect(() => {
-    if (session.mode !== 'live') return;
-    let cancelled = false;
-    const load = () => {
-      api('/api/agent/dashboard')
-        .then((result) => {
-          if (cancelled) return;
-          setData(result);
-          setError(null);
-        })
-        .catch((err) => {
-          if (!cancelled) setError(err.message);
-        });
-    };
-    load();
-    const interval = setInterval(load, POLL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-    // refreshSignal isn't read here -- it's a bump-only counter from a presence change so
-    // this roster poll and the header pill's own poll land close together instead of
-    // drifting on two fully independent 15s cycles.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.mode, refreshSignal]);
+    const tick = setInterval(() => forceTick((n) => n + 1), 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   if (session.mode !== 'live') return null;
   if (error) return <p className="hint">Couldn't load the dashboard: {error}</p>;
@@ -109,20 +85,30 @@ export function Dashboard({ refreshSignal }) {
         <p className="dashboard-section-title">Agent State</p>
         {agents.length > 0 ? (
           <div className="agent-cards">
-            {agents.map((a) => (
-              <div key={a.id} className="agent-card">
-                <div className="agent-card-row">
-                  <span className="agent-card-name">{a.agent}</span>
-                  <span className={`state-badge state-badge-${a.state}`}>{a.stateLabel}</span>
+            {agents.map((a) => {
+              // Ticked client-side from the same raw durationSec + fetchedAtMs the header
+              // pill uses (both now come from the one shared dashboard poll) -- this is
+              // the only way a roster row can never show a different number than the
+              // header for the signed-in agent's own row, even between polls.
+              const duration =
+                fetchedAtMs != null
+                  ? formatElapsed(a.durationSec + (Date.now() - fetchedAtMs) / 1000)
+                  : formatElapsed(a.durationSec);
+              return (
+                <div key={a.id} className="agent-card">
+                  <div className="agent-card-row">
+                    <span className="agent-card-name">{a.agent}</span>
+                    <span className={`state-badge state-badge-${a.state}`}>{a.stateLabel}</span>
+                  </div>
+                  <div className="agent-card-row agent-card-meta">
+                    <span>{duration}</span>
+                    <span>{a.idleCode}</span>
+                    <span>Handled {a.handled}</span>
+                    <span>RONA {a.rona}</span>
+                  </div>
                 </div>
-                <div className="agent-card-row agent-card-meta">
-                  <span>{a.duration}</span>
-                  <span>{a.idleCode}</span>
-                  <span>Handled {a.handled}</span>
-                  <span>RONA {a.rona}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="hint">No agents currently active.</p>

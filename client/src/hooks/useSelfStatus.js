@@ -3,13 +3,16 @@ import { api } from '../lib/api.js';
 
 const POLL_MS = 15000;
 
-// Single shared poll of /api/agent/dashboard's `self` field -- the same WxCC
-// agentSession record the roster's own per-agent duration comes from. Both the header
-// state pill and the active-call timer consume this one source so they can't show two
-// different numbers for "how long have I been in this state" (durationSec resets on
-// every state transition, including going on/off hold).
+// The ONE poll of /api/agent/dashboard for the whole app. Previously the header state
+// pill (via this hook) and the Dashboard roster each ran their own independent
+// setInterval against the same endpoint -- since they never landed at the same instant,
+// the two could show visibly different numbers for the same agent (e.g. a header
+// duration a few seconds ahead of the roster's own row) even though both were "correct"
+// for the moment they were fetched. Every consumer now reads from this single result
+// object instead, so they literally cannot disagree.
 export function useSelfStatus(mode) {
-  const [self, setSelf] = useState(null); // { state, stateLabel, durationSec, idleCode }
+  const [dashboard, setDashboard] = useState(null); // { metrics, agents, stateCounts, self }
+  const [dashboardError, setDashboardError] = useState(null);
   const [fetchedAtMs, setFetchedAtMs] = useState(null);
   // Wall-clock time of the last local resetDuration() call, i.e. the moment we know a
   // state transition actually happened from the user's perspective.
@@ -18,10 +21,10 @@ export function useSelfStatus(mode) {
   const reload = useCallback(() => {
     if (mode !== 'live') return;
     api('/api/agent/dashboard')
-      .then(({ self: result }) => {
-        if (!result) return;
+      .then((result) => {
+        let self = result?.self;
         const resetAtMs = resetAtMsRef.current;
-        if (resetAtMs != null) {
+        if (self && resetAtMs != null) {
           // WxCC's own backend can lag before it reflects a state change we just made --
           // a poll landing in that gap still reports durationSec counted from the
           // PREVIOUS state (sometimes tens of seconds), which would otherwise make the
@@ -29,12 +32,13 @@ export function useSelfStatus(mode) {
           // Never let the accepted duration exceed how long we know it's actually been
           // since the transition; this self-corrects once WxCC's own value catches up.
           const elapsedSinceReset = (Date.now() - resetAtMs) / 1000;
-          result = { ...result, durationSec: Math.min(result.durationSec, elapsedSinceReset) };
+          self = { ...self, durationSec: Math.min(self.durationSec, elapsedSinceReset) };
         }
-        setSelf(result);
+        setDashboard({ ...result, self });
+        setDashboardError(null);
         setFetchedAtMs(Date.now());
       })
-      .catch(() => {});
+      .catch((err) => setDashboardError(err.message));
   }, [mode]);
 
   useEffect(() => {
@@ -50,8 +54,8 @@ export function useSelfStatus(mode) {
   const resetDuration = useCallback(() => {
     resetAtMsRef.current = Date.now();
     setFetchedAtMs(Date.now());
-    setSelf((s) => ({ ...(s || {}), durationSec: 0 }));
+    setDashboard((d) => (d?.self ? { ...d, self: { ...d.self, durationSec: 0 } } : d));
   }, []);
 
-  return { self, fetchedAtMs, reload, resetDuration };
+  return { self: dashboard?.self || null, dashboard, dashboardError, fetchedAtMs, reload, resetDuration };
 }

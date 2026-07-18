@@ -2,16 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 import { APP_VERSION } from '../version.js';
-
-function formatElapsed(totalSeconds) {
-  const total = Math.max(0, Math.round(totalSeconds));
-  const hrs = Math.floor(total / 3600);
-  const mins = Math.floor((total % 3600) / 60);
-  const secs = total % 60;
-  const mm = String(mins).padStart(2, '0');
-  const ss = String(secs).padStart(2, '0');
-  return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
-}
+import { formatElapsed } from '../lib/time.js';
 
 export function PresenceBar({
   onOpenCallLog,
@@ -19,7 +10,6 @@ export function PresenceBar({
   fetchedAtMs,
   reloadSelf,
   resetSelfDuration,
-  onPresenceChanged,
   notificationsEnabled,
   onRequestNotifications,
 }) {
@@ -107,10 +97,7 @@ export function PresenceBar({
         // short delay avoids racing that lag while still confirming much sooner than the
         // full poll interval.
         resetSelfDuration?.();
-        setTimeout(() => {
-          reloadSelf?.();
-          onPresenceChanged?.();
-        }, 3000);
+        setTimeout(() => reloadSelf?.(), 3000);
       } catch (err) {
         setNotice(err.message);
       }
@@ -125,10 +112,7 @@ export function PresenceBar({
       });
       setSession((s) => ({ ...s, agentState: `Idle: ${code.name}` }));
       resetSelfDuration?.();
-      setTimeout(() => {
-        reloadSelf?.();
-        onPresenceChanged?.();
-      }, 3000);
+      setTimeout(() => reloadSelf?.(), 3000);
     } catch (err) {
       setNotice(err.message);
     }

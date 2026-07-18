@@ -17,9 +17,15 @@ export default function App() {
   const { session, loading, notice, setNotice } = useSession();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [callLogOpen, setCallLogOpen] = useState(false);
-  const [dashboardRefreshSignal, setDashboardRefreshSignal] = useState(0);
   const { call, endedTaskId, clearEnded, markEnded, refresh: refreshActiveCall } = useActiveCall(session.mode);
-  const { self, fetchedAtMs, reload: reloadSelf, resetDuration: resetSelfDuration } = useSelfStatus(session.mode);
+  const {
+    self,
+    dashboard,
+    dashboardError,
+    fetchedAtMs,
+    reload: reloadSelf,
+    resetDuration: resetSelfDuration,
+  } = useSelfStatus(session.mode);
 
   useEffect(() => {
     hasExistingSubscription()
@@ -57,7 +63,6 @@ export default function App() {
         fetchedAtMs={fetchedAtMs}
         reloadSelf={reloadSelf}
         resetSelfDuration={resetSelfDuration}
-        onPresenceChanged={() => setDashboardRefreshSignal((n) => n + 1)}
         notificationsEnabled={notificationsEnabled}
         onRequestNotifications={requestNotifications}
       />
@@ -70,15 +75,10 @@ export default function App() {
           fetchedAtMs={fetchedAtMs}
         />
         {!task && callLogOpen && <CallLog onClose={() => setCallLogOpen(false)} />}
-        {!task && !callLogOpen && <Dashboard refreshSignal={dashboardRefreshSignal} />}
+        {!task && !callLogOpen && <Dashboard data={dashboard} error={dashboardError} fetchedAtMs={fetchedAtMs} />}
         {task?.status === 'connected' && <CallScreen task={task} />}
         {task?.status === 'wrapup' && (
-          <WrapUpModal
-            task={task}
-            reloadSelf={reloadSelf}
-            resetSelfDuration={resetSelfDuration}
-            onPresenceChanged={() => setDashboardRefreshSignal((n) => n + 1)}
-          />
+          <WrapUpModal task={task} reloadSelf={reloadSelf} resetSelfDuration={resetSelfDuration} />
         )}
       </main>
       {task?.status === 'offered' && <IncomingTaskModal task={task} />}
@@ -90,7 +90,6 @@ export default function App() {
           onDone={clearEnded}
           reloadSelf={reloadSelf}
           resetSelfDuration={resetSelfDuration}
-          onPresenceChanged={() => setDashboardRefreshSignal((n) => n + 1)}
         />
       )}
       {notice && (

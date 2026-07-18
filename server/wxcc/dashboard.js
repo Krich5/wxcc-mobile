@@ -614,7 +614,10 @@ export async function getDashboard(session) {
       agent: r.agent,
       state: r.state,
       stateLabel: r.stateLabel,
-      duration: formatTime(r.durationSec),
+      // Raw seconds, not a pre-formatted string: the client ticks this live between
+      // polls (same formula as the header's own duration) so a roster row for the
+      // signed-in agent's OWN self can never show a different number than the header.
+      durationSec: r.durationSec,
       idleCode: r.idleCode,
       handled: r.handled,
       rona: r.rona,

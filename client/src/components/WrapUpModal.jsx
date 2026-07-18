@@ -8,7 +8,7 @@ const FALLBACK_CODES = ['Resolved', 'Follow-up needed', 'Transferred', 'No resol
   defaultCode: false,
 }));
 
-export function WrapUpModal({ task, onDone, reloadSelf, resetSelfDuration, onPresenceChanged }) {
+export function WrapUpModal({ task, onDone, reloadSelf, resetSelfDuration }) {
   const { session, setSession, setNotice } = useSession();
   const [codes, setCodes] = useState(session.mode === 'live' ? null : FALLBACK_CODES);
   const [codeId, setCodeId] = useState(session.mode === 'live' ? '' : FALLBACK_CODES[0].id);
@@ -60,10 +60,7 @@ export function WrapUpModal({ task, onDone, reloadSelf, resetSelfDuration, onPre
       // instead of leaving a stale/incorrect state up to a full poll cycle.
       setSession((s) => ({ ...s, currentTask: null, agentState: 'Available' }));
       resetSelfDuration?.();
-      setTimeout(() => {
-        reloadSelf?.();
-        onPresenceChanged?.();
-      }, 3000);
+      setTimeout(() => reloadSelf?.(), 3000);
       onDone?.();
     } catch (err) {
       submittedRef.current = false;
