@@ -101,7 +101,7 @@ function buildSessionQuery(fromMs, toMs) {
   ) {
     agentSessions {
       agentId agentName teamId teamName startTime
-      channelInfo { channelType currentState lastActivityTime idleCodeName connectedCount ronaCount }
+      channelInfo { channelType currentState lastActivityTime idleCodeName connectedCount ronaCount idleDuration }
     }
   }
 }`;
@@ -477,6 +477,22 @@ function getSessionDurationSeconds(agentSession) {
   return Math.max(0, Math.round((Date.now() - ts) / 1000));
 }
 
+// Cumulative time in the Idle (aux) state overall -- distinct from getSessionDurationSeconds
+// above, which is time in the CURRENT reason only and resets on every idle-code switch.
+// channelInfo.idleDuration comes back in milliseconds and (per WxCC's own metrics catalog)
+// is REPLICATED identically across every channel slot on a multi-channel agent, not
+// channel-specific -- reading it off exactly one channel (telephony, same as everywhere
+// else in this file) avoids the ~channel-count over-count that summing would cause.
+function getTotalIdleSeconds(agentSession) {
+  const channels = Array.isArray(agentSession?.channelInfo)
+    ? agentSession.channelInfo
+    : [agentSession?.channelInfo].filter(Boolean);
+  const telCh = channels.find((c) => c?.channelType === 'telephony');
+  const ms = Number(telCh?.idleDuration);
+  if (!ms || Number.isNaN(ms)) return 0;
+  return Math.max(0, Math.round(ms / 1000));
+}
+
 function startOfToday() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
@@ -573,6 +589,7 @@ export async function getDashboard(session) {
       state: bucket,
       stateLabel: getStateBadgeLabel(stateValue),
       durationSec: getSessionDurationSeconds(s),
+      totalIdleSec: bucket === 'idle' ? getTotalIdleSeconds(s) : null,
       idleCode: bucket === 'idle' ? telCh?.idleCodeName || '—' : '—',
       handled: telCh?.connectedCount ?? '—',
       rona: telCh?.ronaCount ?? '—',
@@ -586,6 +603,7 @@ export async function getDashboard(session) {
         state: selfRow.state,
         stateLabel: selfRow.stateLabel,
         durationSec: selfRow.durationSec,
+        totalIdleSec: selfRow.totalIdleSec,
         idleCode: selfRow.idleCode,
       }
     : null;
@@ -618,6 +636,10 @@ export async function getDashboard(session) {
       // polls (same formula as the header's own duration) so a roster row for the
       // signed-in agent's OWN self can never show a different number than the header.
       durationSec: r.durationSec,
+      // Cumulative time idle overall (null when not currently idle) -- distinct from
+      // durationSec, which is time in the CURRENT reason only and resets on every
+      // idle-code switch.
+      totalIdleSec: r.totalIdleSec,
       idleCode: r.idleCode,
       handled: r.handled,
       rona: r.rona,
