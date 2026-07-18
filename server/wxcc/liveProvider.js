@@ -188,7 +188,12 @@ async function resolveCodeNames(session, ids) {
       `id=in=(${ids.map((id) => `"${id}"`).join(',')})`
     )}`
   );
-  return (data?.data || []).map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
+  // System codes (isSystemCode: true) are WxCC-reserved states, not ones an agent should
+  // be able to manually pick -- excluded here too, not just in the accessIdleCode "ALL"
+  // path below, since the same principle applies regardless of how the code got listed.
+  return (data?.data || [])
+    .filter((c) => !c.isSystemCode)
+    .map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
 }
 
 export async function getBuddyAgents(session, { state } = {}) {
@@ -293,7 +298,7 @@ export async function getIdleCodes(session) {
   if (profile?.accessIdleCode === 'ALL') {
     const all = await listAllAuxiliaryCodes(session);
     return all
-      .filter((c) => c.workTypeCode === 'IDLE_CODE')
+      .filter((c) => c.workTypeCode === 'IDLE_CODE' && !c.isSystemCode)
       .map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
   }
   return resolveCodeNames(session, profile?.idleCodes);
