@@ -29,6 +29,15 @@ function MoonIcon() {
   );
 }
 
+function SignOutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+}
+
 function getInitials(name) {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
@@ -256,6 +265,11 @@ export function PresenceBar({
             <button className="side-panel-close" onClick={() => setMenuOpen(false)} aria-label="Close menu">
               &times;
             </button>
+            <div className="side-panel-signout-row">
+              <button className="side-panel-signout" onClick={() => setConfirmSignOut(true)}>
+                <SignOutIcon /> Sign Out
+              </button>
+            </div>
             <div className="side-panel-content">
               {identity?.displayName && (
                 <div className="side-panel-identity">
@@ -323,24 +337,23 @@ export function PresenceBar({
               </div>
             </div>
             <p className="side-panel-version">App version {APP_VERSION}</p>
-            <button className="secondary" onClick={() => setConfirmSignOut(true)}>
-              Sign Out
-            </button>
           </div>
         </div>
       )}
 
       {confirmSignOut && (
         <div className="overlay" onClick={() => setConfirmSignOut(false)}>
-          <div className="card" onClick={(e) => e.stopPropagation()}>
-            <h2>Sign out?</h2>
-            <p>You'll need to reconnect to Webex to sign back in.</p>
-            <button className="primary" onClick={logout}>
-              Sign Out
-            </button>
-            <button className="secondary" onClick={() => setConfirmSignOut(false)}>
-              Cancel
-            </button>
+          <div className="card signout-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Sign Out Confirmation</h2>
+            <p>Are you sure you want to sign out?</p>
+            <div className="signout-confirm-actions">
+              <button className="secondary" onClick={() => setConfirmSignOut(false)}>
+                Cancel
+              </button>
+              <button className="signout-confirm-button" onClick={logout}>
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       )}

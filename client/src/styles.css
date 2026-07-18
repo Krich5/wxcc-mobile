@@ -408,6 +408,25 @@ button.primary:disabled {
   padding: 4px;
 }
 
+.side-panel-signout-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.side-panel-signout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--brand);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
 .side-panel-content {
   flex: 1;
   display: flex;
@@ -1005,6 +1024,41 @@ button.link {
   max-width: 340px;
   text-align: center;
   position: relative;
+}
+
+.signout-confirm-card {
+  text-align: left;
+}
+
+.signout-confirm-card h2 {
+  margin: 0 0 8px;
+  font-size: 1.3rem;
+}
+
+.signout-confirm-card p {
+  margin: 0 0 24px;
+  color: var(--text-dim);
+}
+
+.signout-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.signout-confirm-actions .secondary {
+  width: auto;
+  padding: 10px 20px;
+  border-radius: 999px;
+}
+
+.signout-confirm-button {
+  width: auto;
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg-elevated);
+  font-weight: 600;
 }
 
 .incoming-call .pulse-ring {
