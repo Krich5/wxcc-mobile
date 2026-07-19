@@ -89,10 +89,14 @@ export function PresenceBar({
 
   useEffect(() => {
     if (!headerRef.current) return;
-    // Measured rather than a fixed pixel guess -- the header's real height depends on the
-    // safe-area inset and content, so the menu (anchored to sit right below it, not
-    // covering it) needs the actual rendered value, not an assumption.
-    const update = () => setHeaderHeight(headerRef.current.offsetHeight);
+    // getBoundingClientRect().bottom (not offsetHeight) -- the menu is `position: fixed`,
+    // anchored relative to the viewport, so it needs the header's actual distance from the
+    // viewport's top edge. offsetHeight is just the header's own box height and silently
+    // ignores .app's safe-area-inset-top padding, which is 0 in every desktop/simulator
+    // check but very much not 0 on a real notched/Dynamic-Island iPhone -- there,
+    // offsetHeight alone left the menu rendered too high, covering the header's own
+    // hamburger/close button.
+    const update = () => setHeaderHeight(headerRef.current.getBoundingClientRect().bottom);
     update();
     const ro = new ResizeObserver(update);
     ro.observe(headerRef.current);

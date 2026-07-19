@@ -1480,7 +1480,7 @@ button.link {
   border-right: 1px solid var(--border);
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
   z-index: 14;
-  padding: 20px 16px;
+  padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
   overflow-y: auto;
   text-align: left;
   transform: translateX(-100%);
