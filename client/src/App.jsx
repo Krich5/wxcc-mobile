@@ -47,14 +47,21 @@ export default function App() {
   // the agent stuck showing "Wrap-up" with no way to actually clear it. Both the
   // automatic retry below and a manual click on the header pill (PresenceBar) call this
   // same recovery.
+  // Tracks the taskId of whatever wrap-up was just submitted -- WxCC's own agentSession
+  // state takes a few seconds to actually flip away from "wrapUp" after the agent
+  // submits, so without this the recovery effect below sees that still-lagging state,
+  // thinks the agent is stuck again on the SAME call, and pops the modal right back up
+  // right after it was just closed.
+  const lastWrappedTaskIdRef = useRef(null);
+
   const recoverWrapUp = async () => {
     try {
       const { taskId } = await api('/api/agent/wrapup-task');
-      if (taskId) {
+      if (taskId && taskId !== lastWrappedTaskIdRef.current) {
         markEnded(taskId);
         return true;
       }
-      setNotice("Couldn't find your in-progress call to wrap up");
+      if (!taskId) setNotice("Couldn't find your in-progress call to wrap up");
       return false;
     } catch (err) {
       setNotice(err.message);
@@ -120,7 +127,14 @@ export default function App() {
         {!task && <Dashboard data={dashboard} error={dashboardError} fetchedAtMs={fetchedAtMs} />}
         {task?.status === 'connected' && <CallScreen task={task} />}
         {task?.status === 'wrapup' && (
-          <WrapUpModal task={task} reloadSelf={reloadSelf} resetSelfDuration={resetSelfDuration} />
+          <WrapUpModal
+            task={task}
+            onDone={() => {
+              lastWrappedTaskIdRef.current = task.id;
+            }}
+            reloadSelf={reloadSelf}
+            resetSelfDuration={resetSelfDuration}
+          />
         )}
       </main>
       {task?.status === 'offered' && <IncomingTaskModal task={task} />}
@@ -129,7 +143,10 @@ export default function App() {
       {endedTaskId && task?.status !== 'wrapup' && (
         <WrapUpModal
           task={{ id: endedTaskId }}
-          onDone={clearEnded}
+          onDone={() => {
+            lastWrappedTaskIdRef.current = endedTaskId;
+            clearEnded();
+          }}
           reloadSelf={reloadSelf}
           resetSelfDuration={resetSelfDuration}
         />
