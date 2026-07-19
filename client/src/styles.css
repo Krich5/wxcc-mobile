@@ -204,7 +204,7 @@ input {
 }
 
 .login-screen h1 {
-  margin: 0;
+  margin: 0 0 8px;
   font-size: 1.6rem;
 }
 
@@ -239,6 +239,7 @@ input {
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   color: var(--text);
+  font-size: 1.05rem;
 }
 
 .inline-field {
