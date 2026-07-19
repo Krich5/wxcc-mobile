@@ -1471,6 +1471,64 @@ button.link {
   color: var(--wrapup);
 }
 
+/* One handle both opens and closes the drawer -- it sits above the drawer itself
+   (higher z-index) so it stays clickable, right on the drawer's edge, in either state. */
+.history-drawer-tab {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  z-index: 15;
+  width: 22px;
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 10px 10px 0;
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.history-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(320px, 85vw);
+  background: var(--bg-elevated);
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  z-index: 14;
+  padding: 20px 16px;
+  overflow-y: auto;
+  text-align: left;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+.history-drawer.open {
+  transform: translateX(0);
+}
+
+.history-drawer-title {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+}
+
+.history-drawer-section-label {
+  margin: 16px 0 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .toast {
   position: fixed;
   left: 16px;
