@@ -55,7 +55,6 @@ function getInitials(name) {
 }
 
 export function PresenceBar({
-  onOpenCallLog,
   self,
   fetchedAtMs,
   reloadSelf,
@@ -419,15 +418,6 @@ export function PresenceBar({
                 <span className="side-panel-label">Dial number</span>
                 <span className="side-panel-value">{session.profile?.dialNumber || '—'}</span>
               </div>
-              <button
-                className="secondary"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOpenCallLog?.();
-                }}
-              >
-                Call Log
-              </button>
               {!notificationsEnabled && (
                 <button
                   className="secondary"
