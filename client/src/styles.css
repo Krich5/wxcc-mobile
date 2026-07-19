@@ -399,10 +399,18 @@ button.primary:disabled {
   right: 0;
   bottom: 0;
   left: 0;
-  background: rgba(6, 10, 20, 0.6);
   z-index: 20;
   display: flex;
   justify-content: flex-end;
+  /* No dimmed backdrop -- the panel's own shadow (below) is enough separation, matching
+     the history drawer. Stays mounted at all times (rather than conditionally rendered)
+     so the transform transition can actually play on CLOSE too -- pointer-events is what
+     keeps it from blocking clicks to the page underneath while closed. */
+  pointer-events: none;
+}
+
+.side-panel-overlay.open {
+  pointer-events: auto;
 }
 
 .side-panel {
@@ -414,21 +422,17 @@ button.primary:disabled {
   padding: 24px 20px calc(24px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  animation: side-panel-slide-in 0.2s ease-out;
   /* The overlay is now anchored below the header (see the inline `top` style set from
      the header's measured height) rather than covering it, so without a shadow the panel
      -- especially in light mode, where it's the same near-white as the page behind it --
      had no visual edge separating it from the content it's sitting on top of. */
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25);
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
 }
 
-@keyframes side-panel-slide-in {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
+.side-panel-overlay.open .side-panel {
+  transform: translateX(0);
 }
 
 .side-panel-signout-row {
@@ -522,13 +526,6 @@ button.primary:disabled {
 .side-panel-value {
   font-size: 1rem;
   font-weight: 600;
-}
-
-.side-panel-version {
-  margin: 0 0 12px;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-dim);
 }
 
 .theme-toggle-track {
@@ -1165,8 +1162,12 @@ button.link {
 .outdial-overlay {
   align-items: flex-start;
   justify-content: center;
-  background: rgba(6, 10, 20, 0.35);
+  background: transparent;
   padding-top: 16px;
+}
+
+.outdial-overlay .card {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
 }
 
 .card {

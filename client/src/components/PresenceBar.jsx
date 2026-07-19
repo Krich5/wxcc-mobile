@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
-import { APP_VERSION } from '../version.js';
 import { formatElapsed } from '../lib/time.js';
 import { applyTheme, getStoredTheme } from '../lib/theme.js';
 import { ProfileSettingsModal } from './ProfileSettingsModal.jsx';
@@ -377,9 +376,12 @@ export function PresenceBar({
         </div>
       </header>
 
-      {menuOpen && (
-        <div className="side-panel-overlay" style={{ top: headerHeight }} onClick={() => setMenuOpen(false)}>
-          <div className="side-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`side-panel-overlay ${menuOpen ? 'open' : ''}`}
+        style={{ top: headerHeight }}
+        onClick={() => setMenuOpen(false)}
+      >
+        <div className="side-panel" onClick={(e) => e.stopPropagation()}>
             <div className="side-panel-signout-row">
               <button className="side-panel-signout" onClick={() => setConfirmSignOut(true)}>
                 <SignOutIcon /> Sign Out
@@ -453,10 +455,8 @@ export function PresenceBar({
                 </div>
               </div>
             </div>
-            <p className="side-panel-version">App version {APP_VERSION}</p>
-          </div>
         </div>
-      )}
+      </div>
 
       {confirmSignOut && (
         <div className="overlay" onClick={() => setConfirmSignOut(false)}>
