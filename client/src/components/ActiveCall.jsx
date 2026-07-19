@@ -425,7 +425,7 @@ export function ActiveCall({ call, onEnded, onActionTaken, self, fetchedAtMs }) 
               aria-label={recordingPaused ? 'Resume Recording' : 'Pause Recording'}
               title={recordingPaused ? 'Resume Recording' : 'Pause Recording'}
             >
-              <RecordPausedIcon />
+              {recordingPaused ? <RecordIcon /> : <RecordPausedIcon />}
             </button>
             <button
               type="button"
