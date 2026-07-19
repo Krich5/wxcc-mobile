@@ -721,6 +721,14 @@ export async function getDashboard(session) {
     stateCounts[bucket] = (stateCounts[bucket] || 0) + 1;
     const channels = Array.isArray(s?.channelInfo) ? s.channelInfo : [s?.channelInfo].filter(Boolean);
     const telCh = channels.find((c) => c?.channelType === 'telephony');
+    // Temporary: a real engaged call was seen reading back as "idle" in the header --
+    // categorizeAgentState()'s catch-all buckets ANY unrecognized non-empty currentState
+    // as idle, so this logs the RAW value for this agent's own row to catch whatever
+    // string WxCC is actually sending that isn't in STATE_BUCKETS.onCall. Remove once
+    // confirmed.
+    if (s?.agentId === ctx.agentId) {
+      console.log('[self-state]', JSON.stringify({ rawCurrentState: stateValue, bucket, telCh }));
+    }
     const rowId = s?.agentId || `${s?.agentName}-${s?.teamId}`;
     const { durationSec, totalIdleSec } = getStateTimes(s);
     // connectedCount/ronaCount reset to 0 on every fresh login (they're scoped to ONE
