@@ -33,9 +33,8 @@ function MoonIcon() {
 
 function SignOutIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="1 4 1 10 7 10" />
-      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    <svg viewBox="0 0 32 32" width="16" height="16" fill="currentColor">
+      <path d="M7 21a1 1 0 0 0 .707-1.707l-2.292-2.292H16a1 1 0 1 0 0-2H5.413l2.294-2.294a1 1 0 0 0-1.414-1.414l-4 4a1 1 0 0 0 0 1.414l4 4A1 1 0 0 0 7 21M16 2A13.92 13.92 0 0 0 4.965 7.384 1 1 0 0 0 6.54 8.616a12 12 0 1 1 0 14.768 1 1 0 1 0-1.576 1.232A14 14 0 1 0 16 2" />
     </svg>
   );
 }
