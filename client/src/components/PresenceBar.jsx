@@ -48,6 +48,14 @@ function PhoneIcon() {
   );
 }
 
+function HandsetFilledIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+      <path d="M27.806 21.744 25 18.938a3.035 3.035 0 0 0-4.286.003s-1.502 1.527-1.808 1.85a7.57 7.57 0 0 1-5.492-2.23 7.86 7.86 0 0 1-2.276-5.43c.37-.37 1.895-1.87 1.898-1.873a3.027 3.027 0 0 0 0-4.284L10.23 4.17a3.115 3.115 0 0 0-4.301 0l-1.5 1.5c-1.116 1.114-1.438 3.536-.824 6.17.548 2.355 2.085 6.043 6.286 10.245s7.89 5.738 10.244 6.287a11.3 11.3 0 0 0 2.544.306 5.16 5.16 0 0 0 3.627-1.13l1.5-1.5a3.04 3.04 0 0 0 0-4.303" />
+    </svg>
+  );
+}
+
 function getInitials(name) {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
@@ -74,6 +82,10 @@ export function PresenceBar({
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [profileSettingsOpen, setProfileSettingsOpen] = useState(false);
   const [outdialOpen, setOutdialOpen] = useState(false);
+  // Prefetched once at sign-in (rather than when the New Call popup opens) so opening it
+  // doesn't visibly "step" -- phone number field first, then the Outdial ANI field
+  // popping in a beat later once its own fetch resolves.
+  const [outdialAnis, setOutdialAnis] = useState(null);
   const [, forceTick] = useState(0);
   const [branding, setBranding] = useState(null); // { appTitle, logo } from the team's desktop layout
   const [logoFailed, setLogoFailed] = useState(false);
@@ -119,6 +131,13 @@ export function PresenceBar({
     api('/api/agent/identity')
       .then(({ displayName, avatar }) => setIdentity({ displayName, avatar }))
       .catch(() => {});
+  }, [session.mode]);
+
+  useEffect(() => {
+    if (session.mode !== 'live') return;
+    api('/api/agent/outdial-anis')
+      .then(({ anis: list }) => setOutdialAnis(list || []))
+      .catch(() => setOutdialAnis([]));
   }, [session.mode]);
 
   useEffect(() => {
@@ -322,11 +341,11 @@ export function PresenceBar({
           <button
             type="button"
             className="presence-bar-call"
-            onClick={() => setOutdialOpen(true)}
-            aria-label="New call"
-            title="New call"
+            onClick={() => setOutdialOpen((o) => !o)}
+            aria-label={outdialOpen ? 'Close new call' : 'New call'}
+            title={outdialOpen ? 'Close new call' : 'New call'}
           >
-            <PhoneIcon />
+            {outdialOpen ? <HandsetFilledIcon /> : <PhoneIcon />}
           </button>
           <div className="state-dropdown">
             <button
@@ -487,6 +506,7 @@ export function PresenceBar({
           onActionTaken={refreshActiveCall}
           onCallStarted={setOptimisticCall}
           headerHeight={headerHeight}
+          anis={outdialAnis}
         />
       )}
     </>

@@ -1,25 +1,20 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 
-export function OutdialModal({ onClose, onActionTaken, onCallStarted, headerHeight = 0 }) {
+export function OutdialModal({ onClose, onActionTaken, onCallStarted, headerHeight = 0, anis = null }) {
   const [destination, setDestination] = useState('');
-  // Lazily loaded from this agent's profile -- most profiles have zero or one caller-ID
-  // option configured (outdialANIId absent), in which case the picker is hidden entirely
-  // and WxCC resolves the caller ID server-side, same as before this existed.
-  const [anis, setAnis] = useState(null);
+  // Prefetched by PresenceBar at sign-in (rather than fetched here on open) -- most
+  // profiles have zero or one caller-ID option configured (outdialANIId absent), in which
+  // case the picker is hidden entirely and WxCC resolves the caller ID server-side, same
+  // as before this existed.
   const [ani, setAni] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api('/api/agent/outdial-anis')
-      .then(({ anis: list }) => {
-        setAnis(list || []);
-        const defaultEntry = (list || []).find((a) => a.isDefault);
-        if (defaultEntry) setAni(defaultEntry.number);
-      })
-      .catch(() => setAnis([]));
-  }, []);
+    const defaultEntry = (anis || []).find((a) => a.isDefault);
+    if (defaultEntry) setAni(defaultEntry.number);
+  }, [anis]);
 
   const submit = async (e) => {
     e.preventDefault();
