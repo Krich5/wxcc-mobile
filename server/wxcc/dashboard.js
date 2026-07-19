@@ -713,6 +713,20 @@ export async function getDashboard(session) {
     { waiting: 0, handled: 0, abandoned: 0, connected: 0, longestWaitSec: 0 }
   );
 
+  // Temporary: the roster is only showing this agent's own row even though other agents
+  // are confirmed logged in on the native desktop right now -- logs the raw session count
+  // and each row's agentId/teamId/state so we can see whether the agentSession query
+  // itself only returned one row, or team-scoping (viewableStatistics.teams) is filtering
+  // the others out. Remove once confirmed.
+  console.log(
+    '[roster-debug]',
+    JSON.stringify({
+      myAgentId: ctx.agentId,
+      viewableTeamIds: [...teamIds],
+      sessionsCount: sessions.length,
+      sessions: sessions.map((s) => ({ agentId: s?.agentId, agentName: s?.agentName, teamId: s?.teamId, state: s?.state })),
+    })
+  );
   const scopedSessions = sessions.filter((s) => !teamIds.size || teamIds.has(s?.teamId));
   const stateCounts = { available: 0, onCall: 0, ringing: 0, wrapUp: 0, idle: 0, offline: 0 };
   const agentRows = scopedSessions.map((s) => {
