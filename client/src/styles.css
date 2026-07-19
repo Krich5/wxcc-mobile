@@ -1492,6 +1492,11 @@ button.link {
   justify-content: center;
   font-size: 1rem;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  transition: left 0.25s ease;
+}
+
+.history-drawer-tab.open {
+  left: min(320px, 85vw);
 }
 
 .history-drawer {
