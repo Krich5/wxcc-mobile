@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
+import { APP_VERSION } from '../version.js';
 import { formatElapsed } from '../lib/time.js';
 import { applyTheme, getStoredTheme } from '../lib/theme.js';
 import { ProfileSettingsModal } from './ProfileSettingsModal.jsx';
 import { OutdialModal } from './OutdialModal.jsx';
+import { HistoryDrawer } from './HistoryDrawer.jsx';
 
 function SunIcon() {
   return (
@@ -54,6 +56,7 @@ function getInitials(name) {
 }
 
 export function PresenceBar({
+  call,
   self,
   fetchedAtMs,
   reloadSelf,
@@ -304,6 +307,7 @@ export function PresenceBar({
 
   return (
     <>
+      <HistoryDrawer call={call} headerHeight={headerHeight} />
       <header className="presence-bar" ref={headerRef}>
         <div className="presence-bar-team">
           <img
@@ -455,6 +459,7 @@ export function PresenceBar({
                 </div>
               </div>
             </div>
+            <p className="side-panel-version">App version {APP_VERSION}</p>
         </div>
       </div>
 

@@ -8,7 +8,6 @@ import { CallScreen } from './components/CallScreen.jsx';
 import { WrapUpModal } from './components/WrapUpModal.jsx';
 import { Dashboard } from './components/Dashboard.jsx';
 import { ActiveCall } from './components/ActiveCall.jsx';
-import { HistoryDrawer } from './components/HistoryDrawer.jsx';
 import { Spinner } from './components/Spinner.jsx';
 import { enableNotifications, hasExistingSubscription } from './lib/push.js';
 import { useActiveCall } from './hooks/useActiveCall.js';
@@ -104,8 +103,8 @@ export default function App() {
 
   return (
     <div className="app">
-      <HistoryDrawer call={call} />
       <PresenceBar
+        call={call}
         self={self}
         fetchedAtMs={fetchedAtMs}
         reloadSelf={reloadSelf}

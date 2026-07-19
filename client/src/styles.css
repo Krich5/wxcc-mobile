@@ -455,7 +455,6 @@ button.primary:disabled {
 }
 
 .side-panel-content {
-  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -526,6 +525,13 @@ button.primary:disabled {
 .side-panel-value {
   font-size: 1rem;
   font-weight: 600;
+}
+
+.side-panel-version {
+  margin: auto 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-dim);
 }
 
 .theme-toggle-track {
@@ -1472,8 +1478,9 @@ button.link {
 }
 
 .history-drawer {
+  /* top is set inline from the same measured headerHeight the hamburger panel uses, so
+     it starts below the app's own title bar -- not just below the phone's status bar. */
   position: fixed;
-  top: 0;
   bottom: 0;
   left: 0;
   width: min(320px, 85vw);
@@ -1481,7 +1488,7 @@ button.link {
   border-right: 1px solid var(--border);
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
   z-index: 14;
-  padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
   overflow-y: auto;
   text-align: left;
   transform: translateX(-100%);

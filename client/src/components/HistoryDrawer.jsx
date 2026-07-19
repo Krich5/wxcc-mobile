@@ -20,7 +20,7 @@ function formatWhen(ms) {
 // backdrop/close button -- showing the currently active call (if any) above the same
 // past-calls list the full-screen Call Log already renders, so an agent can check "what's
 // happening now + what just happened" without leaving whatever else is on screen.
-export function HistoryDrawer({ call }) {
+export function HistoryDrawer({ call, headerHeight = 0 }) {
   const [open, setOpen] = useState(false);
   const [calls, setCalls] = useState(null);
   const [error, setError] = useState(null);
@@ -51,7 +51,7 @@ export function HistoryDrawer({ call }) {
       >
         <span>{open ? '‹' : '›'}</span>
       </button>
-      <div className={`history-drawer ${open ? 'open' : ''}`}>
+      <div className={`history-drawer ${open ? 'open' : ''}`} style={{ top: headerHeight }}>
         <h2 className="history-drawer-title">Calls</h2>
 
         {call && (
