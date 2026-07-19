@@ -24,6 +24,15 @@ router.post('/login', async (req, res) => {
   req.session.mode = mode;
   try {
     const provider = providerFor(req.session);
+    // Confirmed live: re-submitting login (Profile Settings' "edit your number and
+    // resign in") while already logged in does NOT actually re-register the new dial
+    // number on WxCC's side -- the agent's extension in Analyzer stayed the old one, and
+    // calls kept routing there. A real logout first (WxCC-level only -- this is NOT the
+    // full /api/agent/logout, which also revokes the Webex OAuth session) is what
+    // actually clears the old registration so the following login takes.
+    if (mode === 'live' && req.session.profile) {
+      await provider.logout(req.session).catch(() => {});
+    }
     const data =
       mode === 'live'
         ? await provider.login(req.session, { dialNumber, teamId, teamName })
