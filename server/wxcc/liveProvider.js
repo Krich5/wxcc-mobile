@@ -318,6 +318,18 @@ export async function getIdleCodes(session) {
 
 export async function getWrapUpCodes(session) {
   const profile = await loadAgentProfile(session);
+  // Confirmed (same principle as accessIdleCode above): when a desktop profile's
+  // accessWrapUpCode is "ALL" rather than a specific list, profile.wrapUpCodes doesn't
+  // carry the actual set -- falling back to resolveCodeNames() with an empty/wrong list
+  // in that case meant wrap-up submitted a bogus auxCodeId and WxCC rejected it with
+  // "Invalid wrap-up details". The real list has to come from every org-wide auxiliary
+  // code whose workTypeCode is WRAP_UP_CODE instead.
+  if (profile?.accessWrapUpCode === 'ALL') {
+    const all = await listAllAuxiliaryCodes(session);
+    return all
+      .filter((c) => c.workTypeCode === 'WRAP_UP_CODE' && !c.isSystemCode)
+      .map((c) => ({ id: c.id, name: c.name || c.id, defaultCode: c.defaultCode }));
+  }
   return resolveCodeNames(session, profile?.wrapUpCodes);
 }
 
