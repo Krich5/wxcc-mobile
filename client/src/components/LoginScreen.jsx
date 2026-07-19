@@ -113,7 +113,6 @@ function LiveAgentLoginForm() {
   return (
     <form className="screen login-screen" onSubmit={submit}>
       <h1>Set your interaction preferences</h1>
-      <p className="subtitle">Choose your team and enter your cell phone number</p>
 
       <label className="field">
         Team

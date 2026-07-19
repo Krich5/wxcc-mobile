@@ -1478,10 +1478,13 @@ button.link {
 }
 
 .history-drawer {
-  /* top is set inline from the same measured headerHeight the hamburger panel uses, so
-     it starts below the app's own title bar -- not just below the phone's status bar. */
+  /* top/height are set inline: top from the same measured headerHeight the hamburger
+     panel uses (so it starts below the app's own title bar, not just the status bar),
+     height as 100dvh minus that -- NOT a plain `bottom: 0`, which on iOS Safari stayed
+     sized to whatever the viewport was at initial paint (address bar visible) and only
+     recalculated after a manual reload, leaving a dead gap at the bottom in the meantime.
+     dvh is the dynamic-viewport unit purpose-built to track the collapsing toolbar live. */
   position: fixed;
-  bottom: 0;
   left: 0;
   width: min(320px, 85vw);
   background: var(--bg-elevated);

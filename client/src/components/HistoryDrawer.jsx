@@ -51,7 +51,10 @@ export function HistoryDrawer({ call, headerHeight = 0 }) {
       >
         <span>{open ? '‹' : '›'}</span>
       </button>
-      <div className={`history-drawer ${open ? 'open' : ''}`} style={{ top: headerHeight }}>
+      <div
+        className={`history-drawer ${open ? 'open' : ''}`}
+        style={{ top: headerHeight, height: `calc(100dvh - ${headerHeight}px)` }}
+      >
         <h2 className="history-drawer-title">Calls</h2>
 
         {call && (
