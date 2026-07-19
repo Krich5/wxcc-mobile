@@ -645,6 +645,14 @@ export async function getDashboard(session) {
 
   const now = Date.now();
   const fromMs = startOfToday();
+  // Confirmed live: the roster was only ever showing THIS agent's own row -- reusing
+  // fromMs (midnight today) for the agentSession query excludes any teammate whose
+  // session started before today's midnight but is still open (same reasoning
+  // checkExistingSession() below already uses a 24h-back window for), even though
+  // isActive:true means they're genuinely still logged in right now. Tasks still use
+  // fromMs/startOfToday since "today's" handled/abandoned counts are meant to reset at
+  // midnight; only the session lookup needs the wider window.
+  const sessionsFromMs = now - 24 * 60 * 60 * 1000;
 
   const [queueNamesResp, teamNamesResp, parkedTasks, connectedTasks, dailyTasks, sessions, handledRonaTotals] =
     await Promise.all([
@@ -668,7 +676,7 @@ export async function getDashboard(session) {
       fetchAllTaskPages(session, buildParkedTaskQuery, fromMs, now),
       fetchAllTaskPages(session, buildConnectedTaskQuery, fromMs, now),
       fetchAllTaskPages(session, buildDailyTaskQuery, fromMs, now),
-      fetchAgentSessions(session, fromMs, now),
+      fetchAgentSessions(session, sessionsFromMs, now),
       fetchTodaysHandledRonaTotals(session, fromMs, now).catch(() => new Map()),
     ]);
 
@@ -713,20 +721,6 @@ export async function getDashboard(session) {
     { waiting: 0, handled: 0, abandoned: 0, connected: 0, longestWaitSec: 0 }
   );
 
-  // Temporary: the roster is only showing this agent's own row even though other agents
-  // are confirmed logged in on the native desktop right now -- logs the raw session count
-  // and each row's agentId/teamId/state so we can see whether the agentSession query
-  // itself only returned one row, or team-scoping (viewableStatistics.teams) is filtering
-  // the others out. Remove once confirmed.
-  console.log(
-    '[roster-debug]',
-    JSON.stringify({
-      myAgentId: ctx.agentId,
-      viewableTeamIds: [...teamIds],
-      sessionsCount: sessions.length,
-      sessions: sessions.map((s) => ({ agentId: s?.agentId, agentName: s?.agentName, teamId: s?.teamId, state: s?.state })),
-    })
-  );
   const scopedSessions = sessions.filter((s) => !teamIds.size || teamIds.has(s?.teamId));
   const stateCounts = { available: 0, onCall: 0, ringing: 0, wrapUp: 0, idle: 0, offline: 0 };
   const agentRows = scopedSessions.map((s) => {
@@ -735,14 +729,6 @@ export async function getDashboard(session) {
     stateCounts[bucket] = (stateCounts[bucket] || 0) + 1;
     const channels = Array.isArray(s?.channelInfo) ? s.channelInfo : [s?.channelInfo].filter(Boolean);
     const telCh = channels.find((c) => c?.channelType === 'telephony');
-    // Temporary: a real engaged call was seen reading back as "idle" in the header --
-    // categorizeAgentState()'s catch-all buckets ANY unrecognized non-empty currentState
-    // as idle, so this logs the RAW value for this agent's own row to catch whatever
-    // string WxCC is actually sending that isn't in STATE_BUCKETS.onCall. Remove once
-    // confirmed.
-    if (s?.agentId === ctx.agentId) {
-      console.log('[self-state]', JSON.stringify({ rawCurrentState: stateValue, bucket, telCh }));
-    }
     const rowId = s?.agentId || `${s?.agentName}-${s?.teamId}`;
     const { durationSec, totalIdleSec } = getStateTimes(s);
     // connectedCount/ronaCount reset to 0 on every fresh login (they're scoped to ONE
