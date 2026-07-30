@@ -3,6 +3,14 @@ import { api } from '../lib/api.js';
 import { useSession } from '../context/SessionContext.jsx';
 import { Spinner } from './Spinner.jsx';
 
+function WarningIcon() {
+  return (
+    <svg viewBox="0 0 32 32" width="64" height="64" fill="currentColor">
+      <path d="m29.595 23.5-10.997-19a3 3 0 0 0-5.197 0h.001l-11 19A3 3 0 0 0 5 28h21.997a3 3 0 0 0 2.598-4.5m-1.732 2a.98.98 0 0 1-.866.5H5a1 1 0 0 1-.866-1.499l10.999-19a1 1 0 0 1 1.734 0l10.996 19a.98.98 0 0 1 0 1M16 24a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5M16 20a1 1 0 0 0 1-1v-7a1 1 0 1 0-2 0v7a1 1 0 0 0 1 1" />
+    </svg>
+  );
+}
+
 export function LoginScreen() {
   const { session, refresh } = useSession();
 
@@ -26,11 +34,11 @@ function ModeChoice() {
   if (blocked) {
     return (
       <div className="screen login-screen">
-        <img className="logo" src="/icons/logo.png" alt="" />
+        <div className="login-warning-icon">
+          <WarningIcon />
+        </div>
         <h1>Unauthorized</h1>
-        <p className="subtitle">
-          Your organization isn't authorized to use this app. Contact whoever shared this link with you.
-        </p>
+        <p className="subtitle">Your organization isn't authorized to use this app.</p>
         <button className="secondary" onClick={loginLive}>
           Try a different account
         </button>

@@ -214,6 +214,11 @@ input {
   margin-bottom: 8px;
 }
 
+.login-warning-icon {
+  color: var(--amber);
+  margin-bottom: 8px;
+}
+
 .subtitle,
 .hint {
   color: var(--text-dim);
