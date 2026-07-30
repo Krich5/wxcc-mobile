@@ -3,6 +3,7 @@
 // https://developer.webex-cx.com to get a client id/secret.
 import express from 'express';
 import { persistTokens } from '../session.js';
+import { decodeSparkId } from '../wxcc/liveProvider.js';
 
 const router = express.Router();
 
@@ -66,6 +67,31 @@ router.get('/callback', async (req, res) => {
       throw new Error(`Token exchange failed: ${tokenRes.status} ${text}`);
     }
     const tokens = await tokenRes.json();
+
+    // Org allowlist -- ALLOWED_ORG_IDS is a comma-separated list of WxCC org ids this
+    // deployment is permitted for; unset/empty means no restriction (back-compat with
+    // any existing deployment that hasn't configured it). Checked here, before this
+    // token is ever stored in the session or used for any WxCC call, so a blocked org
+    // never gets far enough to see a working app -- just an immediately-revoked token.
+    const allowedOrgIds = (process.env.ALLOWED_ORG_IDS || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (allowedOrgIds.length) {
+      const meRes = await fetch('https://webexapis.com/v1/people/me', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+      const me = meRes.ok ? await meRes.json().catch(() => null) : null;
+      const orgId = me?.orgId ? decodeSparkId(me.orgId) : null;
+      if (!orgId || !allowedOrgIds.includes(orgId)) {
+        await fetch(TOKEN_URL, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        }).catch(() => {});
+        return res.redirect('/?blocked=1');
+      }
+    }
+
     req.session.tokens = tokens;
     req.session.tokensIssuedAt = Date.now();
     req.session.mode = 'live';

@@ -17,9 +17,26 @@ export function LoginScreen() {
 }
 
 function ModeChoice() {
+  const blocked = new URLSearchParams(window.location.search).get('blocked') === '1';
+
   const loginLive = () => {
     window.location.href = '/api/auth/login';
   };
+
+  if (blocked) {
+    return (
+      <div className="screen login-screen">
+        <img className="logo" src="/icons/logo.png" alt="" />
+        <h1>Unauthorized</h1>
+        <p className="subtitle">
+          Your organization isn't authorized to use this app. Contact whoever shared this link with you.
+        </p>
+        <button className="secondary" onClick={loginLive}>
+          Try a different account
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="screen login-screen">

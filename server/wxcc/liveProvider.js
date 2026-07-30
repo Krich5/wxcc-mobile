@@ -31,7 +31,7 @@ export async function authedFetch(session, path, opts = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-function decodeSparkId(encoded) {
+export function decodeSparkId(encoded) {
   // Webex "Cisco Spark" IDs are base64 of a URN like "ciscospark://us/PEOPLE/<uuid>" --
   // the UUID is the last path segment.
   const decoded = Buffer.from(encoded, 'base64').toString('utf-8');
